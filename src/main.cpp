@@ -1,5 +1,7 @@
 #include <iostream>
 #include <curl/curl.h>
+#include "tcp.hpp"
+
 using namespace std;
 
 
@@ -63,6 +65,10 @@ static bool init(CURL *&conn, char *url) {
 }
 int main(int argc, char *argv[]) {
   cout << "ximiner alive" << endl;
+  TCPClient tcp;
+  tcp.setup("eu.siamining.com", 3333);
+  tcp.send("{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
+  cout << tcp.read() << endl;
   CURL *conn = NULL;
   CURLcode code;
   std::string title;
