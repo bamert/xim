@@ -29,6 +29,9 @@ class TCPClient {
     port = 0;
     address = "";
   }
+  ~TCPClient() {
+    close(sock);
+  }
   bool setup(string address, int port) {
     if (sock == -1) {
       sock = socket(AF_INET , SOCK_STREAM , 0);

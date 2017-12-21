@@ -1,102 +1,66 @@
 #include <iostream>
-#include <curl/curl.h>
 #include "tcp.hpp"
 
 using namespace std;
 
+//simply contains some sort of accessible tree
+class JSONobject {
+ public:
+  JSONobject(){
 
-static char errorBuffer[CURL_ERROR_SIZE];
-static std::string buffer;
-
-//
-//  libcurl write callback function
-//
-
-static int writer(char *data, size_t size, size_t nmemb,
-                  std::string *writerData) {
-  if (writerData == NULL)
-    return 0;
-
-  writerData->append(data, size * nmemb);
-
-  return size * nmemb;
-}
-static bool init(CURL *&conn, char *url) {
-  CURLcode code;
-
-  conn = curl_easy_init();
-
-  if (conn == NULL) {
-    fprintf(stderr, "Failed to create CURL connection\n");
-    exit(EXIT_FAILURE);
   }
+  //methods to add items to tree (i.e. add string, add numeral, add...)
+  //and same to also get them or check for their existence.
+ private:
+};
 
-  code = curl_easy_setopt(conn, CURLOPT_ERRORBUFFER, errorBuffer);
-  if (code != CURLE_OK) {
-    fprintf(stderr, "Failed to set error buffer [%d]\n", code);
-    return false;
+//should offer parse and pack commands.
+class JSONparse {
+ public:
+  JSONparse() {
+
   }
+  JSONobject parse(std::string& json) {
+    JSONobject obj;
+    for (int i = 0; i < json.length(); i++) {
+      uint8_t c = json[i];
 
-  code = curl_easy_setopt(conn, CURLOPT_URL, url);
-  if (code != CURLE_OK) {
-    fprintf(stderr, "Failed to set URL [%s]\n", errorBuffer);
-    return false;
+      cout << c;
+      //detect tokens:
+      switch (c) {
+      case '{': cout << "obj start" << endl; break;
+      case '}': cout << "obj end" << endl; break;
+      case '[': cout << "arr start" << endl; break;
+      case ']': cout << "arr end" << endl; break;
+      case '\"': cout << "string delim" << endl; break;
+      case '\n': cout << "new line" << endl; break;
+
+      // case '\\': cout <<
+      default: break;
+      }
+    }
+    return obj;
   }
+ private:
+  enum State {string};
+  //need a state stack such that we can push and pop
+};
 
-  code = curl_easy_setopt(conn, CURLOPT_FOLLOWLOCATION, 1L);
-  if (code != CURLE_OK) {
-    fprintf(stderr, "Failed to set redirect option [%s]\n", errorBuffer);
-    return false;
-  }
 
-  code = curl_easy_setopt(conn, CURLOPT_WRITEFUNCTION, writer);
-  if (code != CURLE_OK) {
-    fprintf(stderr, "Failed to set writer [%s]\n", errorBuffer);
-    return false;
-  }
-
-  code = curl_easy_setopt(conn, CURLOPT_WRITEDATA, &buffer);
-  if (code != CURLE_OK) {
-    fprintf(stderr, "Failed to set write data [%s]\n", errorBuffer);
-    return false;
-  }
-
-  return true;
-}
 int main(int argc, char *argv[]) {
   cout << "ximiner alive" << endl;
-  TCPClient tcp;
+  /*TCPClient tcp;
   tcp.setup("eu.siamining.com", 3333);
   tcp.send("{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
-  cout << tcp.read() << endl;
-  CURL *conn = NULL;
-  CURLcode code;
-  std::string title;
+  cout << tcp.read() << endl;*/
 
-  // Ensure one argument is given
+  //sample response string to the mining.subscribe query.
+  std::string res =
+    "{\"id\":1,\"error\":null,\"result\":[[[\"mining.notify\",\"080119004c9ad150\"],[\"mining.set_difficulty\",\"080119004c9ad1502\"]],\"08011900\",4]}";
 
-  if (argc != 2) {
-    fprintf(stderr, "Usage: %s <url>\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
+  JSONparse parser;
+  JSONobject obj;
+  obj = parser.parse(res);
+  cout << endl;
 
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-
-  // Initialize CURL connection
-
-  if (!init(conn, argv[1])) {
-    fprintf(stderr, "Connection initializion failed\n");
-    exit(EXIT_FAILURE);
-  }
-
-  // Retrieve content for the URL
-
-  code = curl_easy_perform(conn);
-  curl_easy_cleanup(conn);
-
-  if (code != CURLE_OK) {
-    fprintf(stderr, "Failed to get '%s' [%s]\n", argv[1], errorBuffer);
-    exit(EXIT_FAILURE);
-  }
-  cout << buffer << endl;
 }

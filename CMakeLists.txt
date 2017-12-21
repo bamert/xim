@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 11) # C++11...
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #Find curl
-find_package(CURL REQUIRED)
-include_directories(${CURL_INCLUDE_DIRS})
+##find_package(CURL REQUIRED)
+#include_directories(${CURL_INCLUDE_DIRS})
 
 #find eigen3
 find_package(Eigen3 REQUIRED)
@@ -33,5 +33,5 @@ endif()
 
 
 add_executable(xim src/main.cpp )
-target_link_libraries(xim ${CURL_LIBRARIES})
+#target_link_libraries(xim ${CURL_LIBRARIES})
 
