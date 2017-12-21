@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
   Stratum server("eu.siamining.com", 3333);
 
   server.subscribe("myMiningAdress");
-
+  server.processReply();
   server.isSubscribed();
  
 
