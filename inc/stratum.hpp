@@ -1,71 +1,20 @@
 /*
   Manages communication with a SIA stratum server
  */
-#ifndef __NDB_STRATUMRPC
-#define __NDB_STRATUMRPC
+#ifndef __NDB_SIASTRATUM
+#define __NDB_SIASTRATUM
 #include <iostream>
 #include <thread>
+#include <functional>
 
 
 #include "json.hpp"
 #include "tcp.hpp"
+#include "rpc.hpp"
 
 using namespace std;
 using json = nlohmann::json;
 
-/**
- * @brief      RPC queries and receicption
- */
-class RPCConnection {
- private:
-  enum ConnectionState  {disconencted, connected};
-  int state;
-  TCPClient* connection;
- public:
-  RPCConnection(std::string address, int port) {
-    connection = new TCPClient();
-    if (connection->setup(address, port)) {
-      state = ConnectionState::connected;
-    } else {
-      state = ConnectionState::disconencted;
-      cout << "Setup failed" << endl;
-    }
-  }
-  ~RPCConnection() {
-    delete connection;//closes socket
-  }
-  bool isConnected() {
-    return state == ConnectionState::connected;
-  }
-  bool sendQuery(json& query) {
-    //Check if connected
-    if (state != ConnectionState::connected)
-      cout << "ERR:not connected" << endl;
-
-    //Check if malformed query
-    //(to be implemented)
-    //Serialize and send
-
-    if (connection->send(query.dump() + '\n')) {
-      //If query sent successfully, add id to list to confirm receive later on (and avoid we get reply for sth we didn't ask for.)
-      cout << "SENT:" << query.dump() << endl;
-      return true;
-    } else {
-      cout << "ERR:failed RPC send" << endl;
-      return false;
-    }
-  }
-  //For now this is synchronous.
-  json recMessage() {
-    std::string res = connection->read();
-    cout << res << endl;
-    auto reso = json::parse(res);
-    //Confirm we have sent out a query with this ID
-    //Then hand package back to stratum handler(the stratum class shouldn't have to care about the connection status nor security)
-    return reso;
-  }
-
-};
 
 // To keep the queries that we sent to server
 enum StratumMethod {miningAuthorize, miningSubscribe, miningSubmit};
@@ -80,7 +29,7 @@ struct StratumQuery {
 
 class Stratum {
  private:
-  enum StratumState  {setup, setupFailed, subscribing, subscribed, connectFailed};
+  enum StratumState  {setup, setupFailed, subscribing, subscribed, connectFailed, disconnected};
   int state;
   RPCConnection* rpc;
   std::thread* stratumThread;
@@ -100,6 +49,14 @@ class Stratum {
  public:
   Stratum(std::string address, int port) {
     rpc = new RPCConnection(address, port);
+    //if connectioned succeeded, setup receive callback
+    if (rpc->isConnected()) {
+      //std::function<void()> callback = std::bind(Stratum::processReply, (*this));
+      using namespace std::placeholders; //for _1
+      std::function<void(int)> callback = std::bind(&Stratum::processReply2, this, _1);
+      if(rpc->registerReceiveCallback(callback))
+        cout << "callback handler added" << endl;
+    }
   }
   ~Stratum() {
     delete rpc;
@@ -122,32 +79,22 @@ class Stratum {
       if (rpc->sendQuery(q)) { //query sent successfully
         sentQueries.push_back(StratumQuery(StratumMethod::miningSubscribe, q["id"]));
       }
-
-
-
-      //Spawn thread to handle connection events
-      /*  stratumThread = new std::thread([&]() {
-          std::string res = connection->read();
-          cout << res << endl;
-          json r(res);
-
-          cout << "numResult:" << r["result"].size() << endl;
-          cout << r["result"][1] << endl;
-
-
-        });*/
-
-
     }
   }
-  void processReply() {
-    json r = rpc->recMessage();
-
+  /**
+   * @brief      Processes a reply received from the stratum server. This method
+   *             is used as a callback from the RPC class.
+   *
+   * @param[in]  r     the json object we received over RPC
+   */
+  void processReply2(int r){
+    cout << "received " << r << endl;
+  }
+  void processReply(json r) {
+    cout << r.dump() << endl;
     int id, method;
-
-
     id = r["id"];
-
+    cout <<  "processingReply" << endl;
     //check if this id is present in the list of our sent queries
     if (sentQueryWithId(id, method)) {
       //We got an answer to our subscribe query.
@@ -176,9 +123,10 @@ class Stratum {
 
       }
     }
+    state = StratumState::disconnected;
   }
   bool isSubscribed() {
-    if (state == StratumState::subscribed)
+    if (state == StratumState::disconnected)
       return true;
     else return false;
   }
