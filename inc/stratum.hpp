@@ -35,6 +35,11 @@ class Stratum {
   std::thread* stratumThread;
   /* keeps the sent queries such that we can reidentify the responses*/
   std::vector<StratumQuery> sentQueries;
+
+
+  /*Keeps the callback functor*/
+  std::function<void(json)> callbackFunctor;
+
   //Checks if a query with given id has been sent
   bool sentQueryWithId(const int id, int& method) {
     for (auto &el : sentQueries) {
@@ -53,8 +58,8 @@ class Stratum {
     if (rpc->isConnected()) {
       //std::function<void()> callback = std::bind(Stratum::processReply, (*this));
       using namespace std::placeholders; //for _1
-      std::function<void(int)> callback = std::bind(&Stratum::processReply2, this, _1);
-      if(rpc->registerReceiveCallback(callback))
+      callbackFunctor = std::bind(&Stratum::processReply, this, _1);
+      if(rpc->registerReceiveCallback(callbackFunctor))
         cout << "callback handler added" << endl;
     }
   }
@@ -87,11 +92,8 @@ class Stratum {
    *
    * @param[in]  r     the json object we received over RPC
    */
-  void processReply2(int r){
-    cout << "received " << r << endl;
-  }
+
   void processReply(json r) {
-    cout << r.dump() << endl;
     int id, method;
     id = r["id"];
     cout <<  "processingReply" << endl;
@@ -126,9 +128,12 @@ class Stratum {
     state = StratumState::disconnected;
   }
   bool isSubscribed() {
-    if (state == StratumState::disconnected)
-      return true;
-    else return false;
+    return state == StratumState::subscribed;
+    
+  }
+  bool isSetup() {
+    return state == StratumState::setup;
+    
   }
 
 };

@@ -35,6 +35,7 @@ class RPCConnection {
   ~RPCConnection() {
     //Detach receive callback
     if (receiveThreadRunning) {
+      cout << "killing tcp thread" << endl;
       receiveThreadRunning = false;
       callbackThread->join();
     }
@@ -78,7 +79,7 @@ class RPCConnection {
   //
   // @return     true: callback setup. false: callback setup failed
   //
-  bool registerReceiveCallback(std::function<void(int)> stratumHandler) {
+  bool registerReceiveCallback(std::function<void(json)>& stratumHandler) {
     if (state == ConnectionState::connected) {
       //launch thread
       receiveThreadRunning = true;
@@ -88,13 +89,11 @@ class RPCConnection {
           cout << res << endl;
           json resJson = json::parse(res);
           cout << "calling stratumHandler" << endl;
-          // stratumHandler(resJson);
-          stratumHandler(2);//t
+          stratumHandler(resJson);
+          //stratumHandler(2);//t
         //}
       });
-      //callbackThread->join();
-      //cout << "shouldn't be getting here" << endl;
-      return true;
+         return true;
     }
     return false;
   }

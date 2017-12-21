@@ -5,28 +5,37 @@
 using namespace std;
 class A {
  private:
-  std::thread* thread;
+  std::thread* t;
+  //std::function<void(int)>* callback;
  public:
   A() {};
+  ~A() {
+    cout << "joining thread" << endl;
+    t->join();//callback call causes segfault if we are joining here.
+    delete t;
+  }
 
-  void registerCallback(std::function<void(int)> callback) {
-    thread = new std::thread([&]() {
+  void registerCallback(std::function<void(int)>& callback) {
+    //this->callback = callback;
+    t = new std::thread([ & ]() {
       /* Does some stuff*/
-      callback(1);
+      callback(1); 
     });
-    thread->join(); //The issue is that we have to terminate the thread first, before the binary terminates :-)
   }
 };
 class B {
  private:
   A* a;
-
+  std::function < void(int)> cb;
  public:
   B() {
     a = new A;
     using namespace std::placeholders; //for _1
-    std::function<void(int)> callback = std::bind(&B::callback, this, _1);
-    a->registerCallback(callback);
+    cb = std::bind(&B::callback, this, _1);
+    a->registerCallback(cb);
+  }
+  ~B() {
+    delete a;
   }
   void callback(int i) {
     cout << "Received " << i << endl;
@@ -36,5 +45,6 @@ class B {
 int main() {
 
   B b;
+
 
 }

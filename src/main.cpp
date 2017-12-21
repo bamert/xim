@@ -13,11 +13,15 @@ int main(int argc, char *argv[]) {
   Stratum client("eu.siamining.com", 3333);
 
   client.subscribe("myMiningAdress");
-  while(client.isSubscribed()){
+  int i=0;//this is just so the while loop doesn't get optimized away
+  while(client.isSetup() && 1){
     //define some timeout or commands to terminate..
+    //cout << "ugh" << endl;
+    
   }
+cout << "MAYBE WE NEED TO SPEND SOME TIME HERE?????" << i<<endl;
   //server.processReply();
-  client.isSubscribed();
+  //client.isSetup();
  
 
 }
