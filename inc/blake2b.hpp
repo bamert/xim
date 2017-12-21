@@ -172,9 +172,7 @@ class Blake2b {
   Blake2b() {
     //doing nothing so far.
   }
-#ifdef __APPLE_CC__
   static
-#endif
   void sia_gen_hash(const unsigned char *data, unsigned int len, unsigned char *hash) {
     blake2b_ctx ctx;
     blake2b_init(&ctx, 32, NULL, 0);
