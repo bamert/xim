@@ -76,16 +76,13 @@ class RPCConnection {
       //launch thread
       receiveThreadRunning = true;
       callbackThread = new std::thread([&]() { // issue could be that this is within a thread
-       // while (receiveThreadRunning) {
+        while (receiveThreadRunning) {
           std::string res = connection->read();
-          cout << res << endl;
           json resJson = json::parse(res);
-          cout << "calling stratumHandler" << endl;
           stratumHandler(resJson);
-          //stratumHandler(2);//t
-        //}
+        }
       });
-         return true;
+      return true;
     }
     return false;
   }
