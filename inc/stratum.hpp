@@ -231,9 +231,9 @@ class Stratum {
       sj.nBits = r["params"][6]; //string
       sj.nTime = r["params"][7]; //hexStringToBytes
       sj.cleanJobs = r["params"][8]; //bool
-      cout << "Got notify: " << jobID << ", " << nTime << endl;
+      cout << "Got notify: " << sj.jobID << ", " << sj.nTime << endl;
 
-      jobs.push_back(sj);
+      jobs.push(sj);
     }
   }
   bool isSubscribed() {
