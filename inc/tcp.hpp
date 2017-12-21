@@ -30,7 +30,7 @@ class TCPClient {
     address = "";
   }
   ~TCPClient() {
-    close(sock);
+    TCPClient::close();
   }
   bool setup(string address, int port) {
     if (sock == -1) {
@@ -59,7 +59,7 @@ class TCPClient {
     server.sin_port = htons( port );
     if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0) {
       perror("connect failed. Error");
-      return 1;
+      return false;
     }
     return true;
   }
@@ -91,6 +91,9 @@ class TCPClient {
       reply += buffer[0];
     }
     return reply;
+  }
+  void close(){
+     ::close(sock);
   }
 };
 

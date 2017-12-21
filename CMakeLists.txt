@@ -28,8 +28,8 @@ else()
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wno-everything -msse4.2 ")
 endif()
 
-#Add gpc header directy
-#include_directories("../lib")
+#Add header directy
+include_directories("inc/")
 
 
 add_executable(xim src/main.cpp )
