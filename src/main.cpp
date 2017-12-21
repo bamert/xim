@@ -14,12 +14,11 @@ int main(int argc, char *argv[]) {
 
   client.subscribe("myMiningAdress");
   int i=0;//this is just so the while loop doesn't get optimized away
-  while(client.isSetup() && 1){
+  while(client.isSetup() ){
     //define some timeout or commands to terminate..
     //cout << "ugh" << endl;
-    
+    usleep(1000*100*1); //wait 100ms. No idea why it doesn't work without
   }
-cout << "MAYBE WE NEED TO SPEND SOME TIME HERE?????" << i<<endl;
   //server.processReply();
   //client.isSetup();
  

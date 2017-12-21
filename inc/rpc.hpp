@@ -62,15 +62,7 @@ class RPCConnection {
       return false;
     }
   }
-  //For now this is synchronous.
-  json recMessage() {
-    std::string res = connection->read();
-    cout << res << endl;
-    auto reso = json::parse(res);
-    //Confirm we have sent out a query with this ID
-    //Then hand package back to stratum handler(the stratum class shouldn't have to care about the connection status nor security)
-    return reso;
-  }
+
 
   // If we are connected, this launches a thread that keeps checking for replies
   // and calls the given callback with a new line if there is one.
