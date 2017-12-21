@@ -6,7 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <functional>
-
+#include <queue>
 
 #include "json.hpp"
 #include "tcp.hpp"
