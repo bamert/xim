@@ -37,6 +37,27 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef __APPLE__
+
+#include <libkern/OSByteOrder.h>
+
+#define htobe16(x) OSSwapHostToBigInt16(x)
+#define htole16(x) OSSwapHostToLittleInt16(x)
+#define be16toh(x) OSSwapBigToHostInt16(x)
+#define le16toh(x) OSSwapLittleToHostInt16(x)
+
+#define htobe32(x) OSSwapHostToBigInt32(x)
+#define htole32(x) OSSwapHostToLittleInt32(x)
+#define be32toh(x) OSSwapBigToHostInt32(x)
+#define le32toh(x) OSSwapLittleToHostInt32(x)
+
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#define htole64(x) OSSwapHostToLittleInt64(x)
+#define be64toh(x) OSSwapBigToHostInt64(x)
+#define le64toh(x) OSSwapLittleToHostInt64(x)
+
+#endif
+
 #define bswap_16(value)  \
   ((((value) & 0xff) << 8) | ((value) >> 8))
 
@@ -265,7 +286,7 @@ class Blake2b {
 //      1 <= outlen <= 64 gives the digest size in bytes.
 //      Secret key (also <= 64 bytes) is optional (keylen = 0).
 
-  int blake2b_init(blake2b_ctx *ctx, size_t outlen,
+  static int blake2b_init(blake2b_ctx *ctx, size_t outlen,
                    const void *key, size_t keylen) {      // (keylen=0: no key)
     size_t i;
 
@@ -293,7 +314,7 @@ class Blake2b {
 
 // Add "inlen" bytes from "in" into the hash.
 
-  void blake2b_update(blake2b_ctx *ctx,
+  static void blake2b_update(blake2b_ctx *ctx,
                       const void *in, size_t inlen) {     // data bytes
     size_t i;
 
@@ -312,7 +333,7 @@ class Blake2b {
 // Generate the message digest (size given in init).
 //      Result placed in "out".
 
-  void blake2b_final(blake2b_ctx *ctx, void *out) {
+  static void blake2b_final(blake2b_ctx *ctx, void *out) {
     size_t i;
 
     ctx->t[0] += ctx->c;                // mark last block offset
