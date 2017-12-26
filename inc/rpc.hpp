@@ -25,7 +25,7 @@ class RPCConnection {
  public:
   RPCConnection(std::string address, int port) {
     connection = new TCPClient();
-    idCounter=4512;
+    idCounter=111;
     if (connection->setup(address, port)) {
       state = ConnectionState::connected;
     } else {
@@ -65,7 +65,7 @@ class RPCConnection {
 
     if (connection->send(query.dump() + '\n')) {
       //If query sent successfully, add id to list to confirm receive later on (and avoid we get reply for sth we didn't ask for.)
-      cout << "SENT:" << query.dump() << endl;
+      //cout << "SENT:" << query.dump() << endl;
       return true;
     } else {
       cout << "ERR:failed RPC send" << endl;

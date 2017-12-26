@@ -12,7 +12,6 @@ struct Target {
     value.resize(32, 0);
     //get 8msb
     uint8_t diffLen =  v[0];
-    cout << "diffLen:" << int(diffLen) << endl;
     //last digit is 31, thus with diffLen=3, we'd have to insert
     //the value at 29,30,31, i.e. start inserting at 32-diffLen
     //get prefix

@@ -20,7 +20,7 @@ using json = nlohmann::json;
 
 
 // To keep the queries that we sent to server
-enum StratumMethod {miningAuthorize, miningSubscribe, miningSubmit, miningSetDifficulty, clientGetVersion};
+enum StratumMethod {miningAuthorize, miningSubscribe, miningSubmit, miningSetDifficulty, clientGetVersion, none};
 
 struct StratumQuery {
   int method;
@@ -74,14 +74,17 @@ class Stratum {
 
   Miner* miner;
   //Checks if a query with given id has been sent
-  bool sentQueryWithId(const int id, int& method) {
-    for (auto &el : sentQueries) {
-      if (el.id == id) {
-        method = el.method;
-        return true;
-      } else
-        return false;
+  int sentQueryWithId(const int id) {
+    int method = StratumMethod::none;
+
+    for (int i = 0; i < sentQueries.size(); i++) {
+      if (sentQueries[i].id == id) {
+        method = sentQueries[i].method;
+        sentQueries.erase(sentQueries.begin() +i);
+      }
     }
+    return method;
+
   }
 
   //check if a message is a query to the client or an answer from the server
@@ -108,7 +111,7 @@ class Stratum {
     using namespace std::placeholders; //for _1
 
     callbackFunctorMining = std::bind(&Stratum::submitHeader, this, _1);
-    if(miner->registerMiningResultCallback(callbackFunctorMining))
+    if (miner->registerMiningResultCallback(callbackFunctorMining))
       cout << "mining callback handler added" << endl;
   }
   ~Stratum() {
@@ -152,9 +155,10 @@ class Stratum {
     else
       id = -1;
 
-    cout <<  "RECV:" << r.dump() << endl;
+    //cout <<  "RECV:" << r.dump() << endl;
     //check if this id is present in the list of our sent queries
-    if (sentQueryWithId(id, method)) {
+    method = sentQueryWithId(id);
+    if (method != StratumMethod::none) {
       //We got an answer to our subscribe query.
       if (method == StratumMethod::miningSubscribe) {
         std::string miningNotify;
@@ -244,7 +248,7 @@ class Stratum {
       miner->setTarget(difficulty);
 
 
-      cout << "mining difficulty:" << bigmath.toHexString(miner->getTarget()) << endl;
+      //cout << "mining difficulty:" << bigmath.toHexString(miner->getTarget()) << endl;
 
       if (rpc->sendQuery(q));//we're actually sending a reply here, so no reply is expected.
     }
@@ -272,7 +276,7 @@ class Stratum {
       sj.nBits = r["params"][6]; //string
       sj.nTime = bigmath.hexStringToBytes(r["params"][7]); //hexStringToBytes
       sj.cleanJobs = r["params"][8]; //bool
-      cout << "Got notify: " << sj.jobID << endl;
+      cout << "job " << sj.jobID << " received" << endl;
 
       /* Compute difficulty target */
       auto append = [](uint8_t* buf, std::vector<uint8_t> src) {
@@ -306,7 +310,7 @@ class Stratum {
         memcpy(&buffer[offset], merkleRoot, 32); //256bit previous merkleRoot
         b2b.sia_gen_hash(buffer, offset + 32, merkleRoot); //output val to merkleRoot
       }
-      cout << "MerkleRoot:" << bigmath.toHexString(merkleRoot, 32) << endl;
+      //cout << "MerkleRoot:" << bigmath.toHexString(merkleRoot, 32) << endl;
       // cout << "offset (should be 32)" << offset << endl;
       uint8_t header[80];
       offset = 0;
@@ -324,10 +328,10 @@ class Stratum {
       //Add header to current job
       sj.header = bigmath.bufferToVector(header, 80);
 
-      cout << "nbits:" << sj.nBits << endl;
+      //cout << "nbits:" << sj.nBits << endl;
       //Set network target from nbits
       sj.target.fromNbits(bigmath.hexStringToBytes(sj.nBits));
-      cout << "network difficulty:" << bigmath.toHexString(sj.target.value) << endl;
+      // cout << "network difficulty:" << bigmath.toHexString(sj.target.value) << endl;
 
       miner->addJob(sj);
 
@@ -347,7 +351,7 @@ class Stratum {
     en2.increment();
     std::string nTime = bigmath.toHexString(sj.nTime);
     json q;
-    q["id"] = rpc->getNewId();
+    q["id"] = 111;//rpc->getNewId();
     q["method"] = "mining.submit";
     q["params"] = {miningAddress, sj.jobID, en2hex, nTime, nonce};
 

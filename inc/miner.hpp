@@ -48,7 +48,6 @@ class Miner {
     delete thread;
   }
   void addJob(SiaJob& sj) {
-    cout << "added job to queue" << endl;
     mtx.lock();
     jobs.push(sj);
     mtx.unlock();
@@ -57,7 +56,9 @@ class Miner {
     return miningTarget.value;
   }
   void setTarget(double difficulty) {
+    mtx.lock();
     miningTarget.fromDifficulty(difficulty);
+    mtx.unlock();
   }
   bool registerMiningResultCallback(std::function<void(SiaJob)>& submitHeaderr) {
     //attach mining thread
@@ -65,27 +66,17 @@ class Miner {
     thread = new std::thread([&]() {
       Blake2b b2b;
       Bigmath bigmath;
-      //keep checking if there is work,
-      //mine it,  report results
-      //
-      //
-      //
-      //Conundrum:
-      //Here we need a callback to stratum to push work results
-      //yet stratum also needs a way to call mine to deliver work.
-      //How to implement this two-way street?
-      cout << "starting to mine:" << endl;
       while (threadRunning) {
-     //  cout << "K" << endl; //currently need this to actually mine, I don't know why. -_-
+        //  cout << "K" << endl; //currently need this to actually mine, I don't know why. -_-
         mtx.lock();
         bool jobsEmpty = jobs.empty();
         mtx.unlock();
         if (!jobsEmpty) {
-          cout << "running job" << endl;
-
+          mtx.lock();
           SiaJob sj = jobs.front();
           jobs.pop();
-
+          mtx.unlock();
+          cout << "job "  << sj.jobID << " running, ";
           //Mine work, send result if there is oen
           //Mine this first one right here.
           uint8_t header[80];
@@ -96,10 +87,16 @@ class Miner {
           uint8_t headerOut[80];
           uint8_t hash[32];
           uint32_t n = 0;
-          uint32_t maxNonce = 0x1 << 28;//10000000;
+          uint32_t minNonce = 0;
+          uint32_t maxNonce = 0x1 << 27;//10000000;
 
           bool found = false;
-          for (n = 0; n < maxNonce; n++) {
+          mtx.lock();
+          Target target = miningTarget;
+          mtx.unlock();
+          cout << "target:" << bigmath.toHexString(target.value) << endl;
+
+          for (n = minNonce; n < minNonce + maxNonce; n++) {
             if (n % 1000000 == 0)
               cout << 100.*n / float(maxNonce) << "percent" << '\r';
 
@@ -125,26 +122,26 @@ class Miner {
 
             //if (hash[0] < miningTarget.value[31]) { //only check all 256 bits if the first byte is already smaller.
             //   cout << "candidate" << endl;
-
-            for (int i = 0; i < 31; i++) {
+            for (int i = 0; i < 32; i++) {
               //  cout << "a";
-              if (hash[31 - i] < miningTarget.value[i]) { //we handle the reverse byte order in here.
+              if (hash[i] < target.value[i]) { //we handle the reverse byte order in here.
                 found = true;
                 //  cout << "b" << endl;
                 break;
               }
-              if (hash[31 - i] > miningTarget.value[i]) {
+              if (hash[i] > target.value[i]) {
                 found = false;
                 break;
               }
             }
+
             if (found == true)break;
 
 
           } //end nonce loop
           if (found == true) {
-            cout << "found match:" << bigmath.toHexString(hash, 32) << endl;
-            cout << "target    :" << bigmath.toHexString(miningTarget.value) << endl;
+            cout << "job " << sj.jobID << " found match:" << bigmath.toHexString(hash, 32) << endl;
+            cout << "target    :" << bigmath.toHexString(target.value) << endl;
             cout << "n:" << n << endl;
             //copy result into header
             sj.header[32] = header[32];
@@ -158,7 +155,7 @@ class Miner {
             //return this header to server
             submitHeaderr(sj);
           } else {
-            cout << "didn't find match" << endl;
+            cout << "job " << sj.jobID << " didn't find match" << endl;
           }
         }//job queue empty check
       } //thread loop
