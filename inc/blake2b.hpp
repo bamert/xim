@@ -193,7 +193,7 @@ class Blake2b {
   Blake2b() {
     //doing nothing so far.
   }
-  static
+  
   void sia_gen_hash(const unsigned char *data, unsigned int len, unsigned char *hash) {
     blake2b_ctx ctx;
     blake2b_init(&ctx, 32, NULL, 0);
@@ -214,15 +214,15 @@ class Blake2b {
     swab256(ohash, hash);
   }
 
-
- private:
 // Initialization Vector.
-  static constexpr uint64_t blake2b_iv[8] = {
+   const uint64_t blake2b_iv[8] = {
     0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
     0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
     0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
     0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
   };
+
+ private:
 
 // state context
   typedef struct {
@@ -236,7 +236,7 @@ class Blake2b {
 
 // Compression function. "last" flag indicates last block.
 
-  static void blake2b_compress(blake2b_ctx *ctx, int last) {
+   void blake2b_compress(blake2b_ctx *ctx, int last) {
     const uint8_t sigma[12][16] = {
       { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
       { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 },
@@ -286,7 +286,7 @@ class Blake2b {
 //      1 <= outlen <= 64 gives the digest size in bytes.
 //      Secret key (also <= 64 bytes) is optional (keylen = 0).
 
-  static int blake2b_init(blake2b_ctx *ctx, size_t outlen,
+   int blake2b_init(blake2b_ctx *ctx, size_t outlen,
                    const void *key, size_t keylen) {      // (keylen=0: no key)
     size_t i;
 
@@ -314,7 +314,7 @@ class Blake2b {
 
 // Add "inlen" bytes from "in" into the hash.
 
-  static void blake2b_update(blake2b_ctx *ctx,
+   void blake2b_update(blake2b_ctx *ctx,
                       const void *in, size_t inlen) {     // data bytes
     size_t i;
 
@@ -333,7 +333,7 @@ class Blake2b {
 // Generate the message digest (size given in init).
 //      Result placed in "out".
 
-  static void blake2b_final(blake2b_ctx *ctx, void *out) {
+   void blake2b_final(blake2b_ctx *ctx, void *out) {
     size_t i;
 
     ctx->t[0] += ctx->c;                // mark last block offset
