@@ -351,13 +351,13 @@ class Stratum {
     en2.increment();
     std::string nTime = bigmath.toHexString(sj.nTime);
     json q;
-    q["id"] = 111;//rpc->getNewId();
+    q["id"] = rpc->getNewId();
     q["method"] = "mining.submit";
     q["params"] = {miningAddress, sj.jobID, en2hex, nTime, nonce};
 
 
     if (rpc->sendQuery(q)) {
-      cout << "sent solution" << endl;
+      cout << "job " << sj.jobID << " sent solution (id=" << q["id"]  << ")" << endl;
       sentQueries.push_back(StratumQuery(StratumMethod::miningSubmit, q["id"]));
     }
   }
