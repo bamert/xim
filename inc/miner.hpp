@@ -101,10 +101,15 @@ class Miner {
               cout << 100.*n / float(maxNonce) << "percent" << '\r';
 
             //insert nonce
-            header[32] = (n >> 24) & 0xFF;
+            /*header[32] = (n >> 24) & 0xFF;
             header[33] = (n >> 16) & 0xFF;
             header[34] = (n >> 8) & 0xFF;
-            header[35] = (n) & 0xFF;
+            header[35] = (n) & 0xFF;*/
+             header[35] = (n >> 24) & 0xFF;
+            header[34] = (n >> 16) & 0xFF;
+            header[33] = (n >> 8) & 0xFF;
+            header[32] = (n) & 0xFF;
+
             //set second half of nonce to zero (would be 64bit!) (imho I already did this above, but double-check)
             header[36] = 0;
             header[37] = 0;
