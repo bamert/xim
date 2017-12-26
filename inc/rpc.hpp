@@ -19,12 +19,13 @@ class RPCConnection {
   enum ConnectionState  {disconencted, connected};
   int state;
   bool receiveThreadRunning;
-
+  int idCounter;
   std::thread* callbackThread;
   TCPClient* connection;
  public:
   RPCConnection(std::string address, int port) {
     connection = new TCPClient();
+    idCounter=4512;
     if (connection->setup(address, port)) {
       state = ConnectionState::connected;
     } else {
@@ -43,6 +44,15 @@ class RPCConnection {
   }
   bool isConnected() {
     return state == ConnectionState::connected;
+  }
+  /**
+   * @brief      Gets a new id and increments the counter. can be used to send
+   *             messages to the server which require new distinct ids.
+   *
+   * @return     The new identifier.
+   */
+  int getNewId(){
+    return idCounter++;
   }
   bool sendQuery(json& query) {
     //Check if connected
