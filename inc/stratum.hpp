@@ -82,6 +82,8 @@ class Stratum {
 
   ExtraNonce2 en2;
 
+  Target miningTarget;
+
   //Checks if a query with given id has been sent
   bool sentQueryWithId(const int id, int& method) {
     for (auto &el : sentQueries) {
@@ -135,6 +137,7 @@ class Stratum {
       }
     }
   }
+
   /**
    * @brief      Processes a reply received from the stratum server. This method
    *             is used as a callback from the RPC class.
@@ -211,7 +214,7 @@ class Stratum {
            extraNonce2size = r["result"][2];
           }*/
           //We'll shut down  after we're authorized
-          state = StratumState::disconnected;
+          //state = StratumState::disconnected;
         }
       }
       if (method == StratumMethod::miningSubmit) {
@@ -238,11 +241,11 @@ class Stratum {
 
       double difficulty = r["params"][0];
       cout << "Received difficulty update:" << difficulty << endl;
-      Target target;
-      Bigmath bigmath;
-      target.fromDifficulty(difficulty);
 
-      cout << "mining difficulty:" << bigmath.toHexString(target.value) << endl;
+      Bigmath bigmath;
+      miningTarget.fromDifficulty(difficulty);
+
+      cout << "mining difficulty:" << bigmath.toHexString(miningTarget.value) << endl;
 
       if (rpc->sendQuery(q));//we're actually sending a reply here, so no reply is expected.
     }
@@ -283,54 +286,122 @@ class Stratum {
       offset += append(&buffer[offset], sj.coinb1);
       offset += append(&buffer[offset], extraNonce1);
       offset += append(&buffer[offset], en2.bytes());
-      en2.increment();//update extranonce2
+      //en2.increment();//update extranonce2
       offset += append(&buffer[offset], sj.coinb2);
 
       //hash [0,offset] on buffer
       Blake2b b2b;
-      unsigned char hash[32];
-      b2b.sia_gen_hash(buffer, offset, hash);
+      uint8_t mhash[32];
+      b2b.sia_gen_hash(buffer, offset, mhash);
 
-      std::vector<uint8_t> one;
-      one.push_back(0x01);
+
 
       uint8_t merkleRoot[32]; //256bit
-      memcpy(merkleRoot, hash, 32);
+      memcpy(merkleRoot, mhash, 32);
 
       for (auto el : sj.merkleBranches) {
         //merkleRoot = blake2b('\x01' + binascii.unhexlify(h) + merkle_root, digest_size = 32).digest();
-        offset = 0;
-        offset += append(&buffer[offset], one);//one
+        offset = 1;
+        buffer[0] = 1;
         offset += append(&buffer[offset], el); //markle branch
         memcpy(&buffer[offset], merkleRoot, 32); //256bit previous merkleRoot
         b2b.sia_gen_hash(buffer, offset + 32, merkleRoot); //output val to merkleRoot
       }
-      //cout << "Finished MerkleRoot:" << endl << merkleRoot << endl;
+      cout << "Finished MerkleRoot:" << endl <<  bigmath.toHexString(merkleRoot,32) << endl;
       // cout << "offset (should be 32)" << offset << endl;
       uint8_t header[80];
       offset = 0;
       offset += append(&buffer[offset], sj.prevHash);
-      offset += append(&buffer[offset], {0, 0, 0, 0, 0, 0 , 0, 0});
+      offset += append(&buffer[offset], {0, 0, 0, 0, 0, 0 , 0, 0}); //where we aer gonna put our trial nonce
       offset += append(&buffer[offset], sj.nTime);
       memcpy(&buffer[offset], merkleRoot, 32);
 
-      cout << "header:" << offset << endl;
+      /*cout << "header:" << offset << endl;
       for (int i = 0; i < 80; i++)
         cout << buffer[i];
       cout << endl;
+      */
 
       //Add header to current job
       sj.header = bigmath.bufferToVector(buffer, 80);
 
       cout << "nbits:" << sj.nBits << endl;
-      //Set target from nbits
+      //Set network target from nbits
       sj.target.fromNbits(bigmath.hexStringToBytes(sj.nBits));
       cout << "network difficulty:" << bigmath.toHexString(sj.target.value) << endl;
 
       jobs.push(sj);
 
-      //return this header to server
-      // submitHeader(sj);
+      //Mine this first one right here.
+      uint8_t headerOut[80];
+      uint8_t hash[32];
+      uint32_t n = 0;
+      uint32_t maxNonce = 0x1 << 28;//10000000;
+
+      bool found = false;
+      for (n = 0; n < maxNonce; n++) {
+        if (n % 1000000 == 0)
+          cout << 100.*n / float(maxNonce) << "percent" << '\r';
+
+        //insert nonce
+        header[32] = (n >> 24) & 0xFF;
+        header[33] = (n >> 16) & 0xFF;
+        header[34] = (n >> 8) & 0xFF;
+        header[35] = (n) & 0xFF;
+        //set second half of nonce to zero (would be 64bit!) (imho I already did this above, but double-check)
+        header[36] = 0;
+        header[37] = 0;
+        header[38] = 0;
+        header[39] = 0;
+        //set nbits 0 (cpuminer does that)
+        //header[44] = 0;
+        //header[45] = 0;
+        //header[46] = 0;
+        //header[47] = 0;
+        //hash
+        b2b.sia_gen_hash(header, 80, hash);
+
+        //check output
+        
+        //if (hash[0] < miningTarget.value[31]) { //only check all 256 bits if the first byte is already smaller.
+        //   cout << "candidate" << endl;
+
+        for (int i = 0; i < 31; i++) {
+          //  cout << "a";
+          if (hash[31-i] < miningTarget.value[i]) { //we handle the reverse byte order in here.
+            found = true;
+            //  cout << "b" << endl;
+            break;
+          }
+          if (hash[31-i] > miningTarget.value[i]) {
+            found = false;
+            break;
+          }
+        }
+        if (found == true)break;
+
+
+      } //end nonce loop
+      if (found == true) {
+        cout << "found match:" << bigmath.toHexString(hash, 32) << endl;
+        cout << "target    :" << bigmath.toHexString(miningTarget.value) << endl;
+        cout << "n:" << n << endl;
+//copy result into header
+        sj.header[32] = header[32];
+        sj.header[33] = header[33];
+        sj.header[34] = header[34];
+        sj.header[35] = header[35];
+        sj.header[36] = header[36];
+        sj.header[37] = header[37];
+        sj.header[38] = header[38];
+        sj.header[39] = header[39];
+        //return this header to server
+        submitHeader(sj);
+      } else {
+        cout << "didn't find match" << endl;
+      }
+
+
     }
   }
   void submitHeader(SiaJob& sj) {
@@ -338,11 +409,11 @@ class Stratum {
     //extract nonce that we found from header
     std::vector<uint8_t> hdrNonce(sj.header.begin() + 32, sj.header.begin() + 40);
     //Get human-readable hex representation of everything
-    hdrNonce[3]++;
+    //hdrNonce[3]++;
     std::string nonce = bigmath.toHexString(hdrNonce);
     std::string en2hex = bigmath.toHexString(en2.bytes());
+    en2.increment();
     std::string nTime = bigmath.toHexString(sj.nTime);
-
     json q;
     q["id"] = 1561;
     q["method"] = "mining.submit";

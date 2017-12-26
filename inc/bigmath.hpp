@@ -72,9 +72,9 @@ class Bigmath {
     if (c <= '9' && c >= '0')
       return c - '0';
     else if (c >= 'A' && c <= 'F')
-      return c - 'A';
+      return c - 'A' + 10;
     else if (c >= 'a' && c <= 'f')
-      return c - 'a';
+      return c - 'a' + 10;
   }
 
   static std::vector<uint8_t> hexStringToBytes(std::string str) {
@@ -102,7 +102,7 @@ class Bigmath {
     std::string output;
     output.reserve(2 * length);
     for (size_t i = 0; i < length; ++i) {
-      const unsigned char c = buffer[i];
+      const uint8_t c = buffer[i];
       output.push_back(lut[c >> 4]);
       output.push_back(lut[c & 15]);
     }
@@ -115,7 +115,7 @@ class Bigmath {
     int length = buffer.size();
     output.reserve(2 * length);
     for (size_t i = 0; i < length; ++i) {
-      const unsigned char c = buffer[i];
+      const uint8_t c = buffer[i];
       output.push_back(lut[c >> 4]);
       output.push_back(lut[c & 15]);
     }
@@ -140,4 +140,4 @@ class Bigmath {
  private:
 
 };
-#endif __NDB_BIGMATH
+#endif
