@@ -5,8 +5,10 @@
 #include <queue>
 #include <functional>
 #include <mutex>
+#include <chrono>
 #include "blake2b.hpp"
 #include "bigmath.hpp"
+
 //Build a job from the information we've received
 struct SiaJob {
   int extraNonce2size;
@@ -117,14 +119,22 @@ class Miner {
           mtx.lock();
           Target target = miningTarget;
           mtx.unlock();
-          cout << "inhdr :" << bigmath.toHexString(header, 80) << endl;
-          cout << "target:" << bigmath.toHexString(target.value) << endl;
-          cout << "intensity:" << intensity << endl;
-          cout << "offset:" << minNonce << endl;
+          //cout << "inhdr :" << bigmath.toHexString(header, 80) << endl;
+          cout << "target:" << bigmath.toHexString(target.value);
+          cout << " , intensity:" << intensity << endl;
+          //cout << "offset:" << minNonce << endl;
+          auto now = std::chrono::high_resolution_clock::now();
+          auto prev  = std::chrono::high_resolution_clock::now();
           for (uint32_t i = 0 ; i < intensity; i++) {
             //update range scanning status.
-            if (i % 10000 == 0)
-              cout << 100.*i / float(intensity) << "percent      \r";
+            if (i % 10000 == 0) {
+              now = std::chrono::high_resolution_clock::now();
+              std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(now - prev);
+              double secs = time_span.count();
+              double hashRate = 10000 / secs;
+              cout << 100.*i / float(intensity) << "percent," <<  hashRate/1000000 << "MH/s   \r";
+              prev = now;
+            }
 
 
             nonce = i + minNonce;
@@ -142,10 +152,10 @@ class Miner {
 
             //hash
             b2b.sia_gen_hash(header, 80, hash);
-            
+
             //check output
 
-            
+
 
 
             for (int i = 0; i < 32; i++) {
