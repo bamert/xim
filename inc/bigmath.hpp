@@ -2,6 +2,7 @@
 #define __NDB_BIGMATH
 
 
+
 struct Target {
   std::vector<uint8_t> value;
 

@@ -80,7 +80,7 @@ class Stratum {
     for (int i = 0; i < sentQueries.size(); i++) {
       if (sentQueries[i].id == id) {
         method = sentQueries[i].method;
-        sentQueries.erase(sentQueries.begin() +i);
+        sentQueries.erase(sentQueries.begin() + i);
       }
     }
     return method;
@@ -279,11 +279,26 @@ class Stratum {
       cout << "job " << sj.jobID << " received" << endl;
 
       /* Compute difficulty target */
-      auto append = [](uint8_t* buf, std::vector<uint8_t> src) {
+      auto append = [](uint8_t* buf, std::vector<uint8_t> src)  {
         for (int i = 0; i < src.size(); i++)
           buf[i] = src[i];
         return src.size();
       };
+      //Reverse endianness on size/4 32bit values starting from *buf
+      auto le32 = [](uint8_t* buf, int size) {
+
+        for (int i = 0; i < size ; i+=4) {
+          uint8_t a = buf[0];
+          uint8_t b = buf[1];
+          uint8_t c = buf[2];
+          uint8_t d = buf[3];
+          buf[0] = d;
+          buf[1] = c;
+          buf[2] = b;
+          buf[3] = a;
+        }
+      };
+
       int offset = 1;
       buffer[0] = 0; //has to be a zero
       offset += append(&buffer[offset], sj.coinb1);
@@ -316,8 +331,15 @@ class Stratum {
       offset = 0;
       offset += append(&header[offset], sj.prevHash);
       offset += append(&header[offset], {0, 0, 0, 0, 0, 0 , 0, 0}); //where we aer gonna put our trial nonce
-      offset += append(&header[offset], sj.nTime);
+      offset +=  append(&header[offset], sj.nTime);
       memcpy(&header[offset], merkleRoot, 32);
+      le32(&header[0], 32); //change endianness of prevHash
+      le32(&header[40], 4); //change endianness of nTime
+      le32(&header[48], 32); //change endianness of merkleroot
+
+
+
+
 
       /*cout << "header:" << offset << endl;
       for (int i = 0; i < 80; i++)
