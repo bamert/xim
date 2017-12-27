@@ -142,31 +142,15 @@ class Miner {
 
             //hash
             b2b.sia_gen_hash(header, 80, hash);
-            /* uint8_t hash2[32];
-             uint32_t *ohash = (uint32_t *)(hash2);
-             swab256(ohash, hash);*/
-
-            // std::vector<uint8_t> hout;
-            //for (int i = 0; i < 32; i++)
-            //  hout.push_back(hash2[i]);
-            //cout << endl << "hash:" << bigmath.toHexString(hout) << endl;
-            //cout << "exp :" << "00000000000006418b86014ff54b457f52665b428d5af57e80b0b7ec84c706e5" << endl;
-
-
+            
             //check output
 
-            //This should be a match!
-            if (i == 0)
-              cout << endl << "hash:" << bigmath.toHexString(hash, 32) << endl;
+            
 
 
-            //if (hash[0] < miningTarget.value[31]) { //only check all 256 bits if the first byte is already smaller.
-            //   cout << "candidate" << endl;
             for (int i = 0; i < 32; i++) {
-              //  cout << "a";
               if (hash[i] < target.value[i]) { //we handle the reverse byte order in here.
                 found = true;
-                //  cout << "b" << endl;
                 break;
               }
               if (hash[i] > target.value[i]) {
