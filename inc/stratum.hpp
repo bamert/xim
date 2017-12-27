@@ -284,21 +284,7 @@ class Stratum {
           buf[i] = src[i];
         return src.size();
       };
-      //Reverse endianness on size/4 32bit values starting from *buf
-      auto le32 = [](uint8_t* buf, int size) {
-
-        for (int i = 0; i < size ; i+=4) {
-          uint8_t a = buf[0];
-          uint8_t b = buf[1];
-          uint8_t c = buf[2];
-          uint8_t d = buf[3];
-          buf[0] = d;
-          buf[1] = c;
-          buf[2] = b;
-          buf[3] = a;
-        }
-      };
-
+     
       int offset = 1;
       buffer[0] = 0; //has to be a zero
       offset += append(&buffer[offset], sj.coinb1);
@@ -333,9 +319,9 @@ class Stratum {
       offset += append(&header[offset], {0, 0, 0, 0, 0, 0 , 0, 0}); //where we aer gonna put our trial nonce
       offset +=  append(&header[offset], sj.nTime);
       memcpy(&header[offset], merkleRoot, 32);
-      le32(&header[0], 32); //change endianness of prevHash
-      le32(&header[40], 4); //change endianness of nTime
-      le32(&header[48], 32); //change endianness of merkleroot
+      le32array(&header[0], 32); //change endianness of prevHash
+      le32array(&header[40], 4); //change endianness of nTime
+      le32array(&header[48], 32); //change endianness of merkleroot
 
 
 

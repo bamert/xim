@@ -150,6 +150,8 @@ class Miner {
             header[34] = (nonce >> 8) & 0xFF;
             header[35] = (nonce) & 0xFF;
 
+            //change endianness of entire buffer in-place
+            le32array(header,80);
             //hash
             b2b.sia_gen_hash(header, 80, hash);
 

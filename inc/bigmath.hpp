@@ -2,7 +2,28 @@
 #define __NDB_BIGMATH
 
 
+// Reverse endianness on size/4 32bit values starting from *buf
+//
+// @param      buf   The buffer
+// @param[in]  size  The size
+//
+void le32array(uint8_t* buf, int size) {
 
+  for (int i = 0; i < size ; i += 4) {
+    uint8_t a = buf[0];
+    uint8_t b = buf[1];
+    uint8_t c = buf[2];
+    uint8_t d = buf[3];
+    buf[0] = d;
+    buf[1] = c;
+    buf[2] = b;
+    buf[3] = a;
+  }
+}
+
+/**
+ * @brief      { struct_description }
+ */
 struct Target {
   std::vector<uint8_t> value;
 
