@@ -145,13 +145,14 @@ class Miner {
             //nonce = 0x07EB1A3F; //expeted result2. offset=805306368, intensity=28<<1. maxReach = offset+intensity = 805306368 + 28<<1 = 1073741824. nonce=132848191. nonce<maxReach, but nonce<offset. not in scan range!
 
             //insert nonce big endian. (endianness doesn't really matter since we later just submit the header as-is)
+            le32array(header,80);
             header[32] = (nonce >> 24) & 0xFF;
             header[33] = (nonce >> 16) & 0xFF;
             header[34] = (nonce >> 8) & 0xFF;
             header[35] = (nonce) & 0xFF;
 
             //change endianness of entire buffer in-place
-            le32array(header,80);
+           
             //hash
             b2b.sia_gen_hash(header, 80, hash);
 
@@ -161,11 +162,11 @@ class Miner {
 
 
             for (int i = 0; i < 32; i++) {
-              if (hash[i] < target.value[i]) { //we handle the reverse byte order in here.
+              if (hash[31-i] < target.value[i]) { //we handle the reverse byte order in here.
                 found = true;
                 break;
               }
-              if (hash[i] > target.value[i]) {
+              if (hash[31-i] > target.value[i]) {
                 found = false;
                 break;
               }
