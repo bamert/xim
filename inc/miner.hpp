@@ -17,11 +17,18 @@ struct SiaJob {
   std::vector<std::vector<uint8_t>> merkleBranches;
   std::string blockVersion;
   std::string nBits;
+  uint32_t offset;
   std::vector<uint8_t> nTime;
   std::vector<uint8_t> header;
   Target target; //256bit Bigint
   bool cleanJobs;
+  SiaJob() {offset = 0;}
 };
+static inline uint32_t le32dec(const void *pp) {
+  const uint8_t *p = (uint8_t const *)pp;
+  return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
+          ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
+}
 
 class Miner {
  private:
@@ -47,7 +54,10 @@ class Miner {
     thread->join();
     delete thread;
   }
-  void addJob(SiaJob& sj) {
+  bool isMining() {
+    return threadRunning;
+  }
+  void addJob(SiaJob sj) {
     mtx.lock();
     jobs.push(sj);
     mtx.unlock();
@@ -58,6 +68,19 @@ class Miner {
   void setTarget(double difficulty) {
     mtx.lock();
     miningTarget.fromDifficulty(difficulty);
+    //convert to little endian
+    /*for (int i = 0; i < 32; i += 4) {
+      uint8_t a =  miningTarget.value[i + 3];
+      uint8_t b =  miningTarget.value[i + 2];
+      uint8_t c =  miningTarget.value[i + 1];
+      uint8_t d =  miningTarget.value[i];
+
+      miningTarget.value[i] = a;
+      miningTarget.value[i + 1] = b;
+      miningTarget.value[i + 2] = c;
+      miningTarget.value[i + 3] = d;
+    }*/
+
     mtx.unlock();
   }
   bool registerMiningResultCallback(std::function<void(SiaJob)>& submitHeaderr) {
@@ -86,44 +109,56 @@ class Miner {
 
           uint8_t headerOut[80];
           uint8_t hash[32];
-          uint32_t n = 0;
-          uint32_t minNonce = 0;
-          uint32_t maxNonce = 0x1 << 27;//10000000;
+          uint32_t nonce = 0;
+          uint32_t minNonce = sj.offset; //start mining at given offset.
+          uint32_t intensity = 0x1 << 28;//;
 
           bool found = false;
           mtx.lock();
           Target target = miningTarget;
           mtx.unlock();
+          cout << "inhdr :" << bigmath.toHexString(header, 80) << endl;
           cout << "target:" << bigmath.toHexString(target.value) << endl;
+          cout << "intensity:" << intensity << endl;
+          cout << "offset:" << minNonce << endl;
+          for (uint32_t i = 0 ; i < intensity; i++) {
+            //update range scanning status.
+            if (i % 10000 == 0)
+              cout << 100.*i / float(intensity) << "percent      \r";
 
-          for (n = minNonce; n < minNonce + maxNonce; n++) {
-            if (n % 1000000 == 0)
-              cout << 100.*n / float(maxNonce) << "percent" << '\r';
 
-            //insert nonce
-            /*header[32] = (n >> 24) & 0xFF;
-            header[33] = (n >> 16) & 0xFF;
-            header[34] = (n >> 8) & 0xFF;
-            header[35] = (n) & 0xFF;*/
-             header[35] = (n >> 24) & 0xFF;
-            header[34] = (n >> 16) & 0xFF;
-            header[33] = (n >> 8) & 0xFF;
-            header[32] = (n) & 0xFF;
+            nonce = i + minNonce;
+            //we just pick the correct nonce direclty:
+            //nonce1 88, 47, 107, 95,
+            //nonce2 7, 235, 26, 63,
+            //nonce = 0x582F6B5F; //expected result1 offset=5 * (28 << 1), intensity=28 <<1. maxReach = offset+intensity = 6 * (28 << 1) = 1610612736 nonce: 1479502687. nonce<maxReach: should be possible to find this!
+            //nonce = 0x07EB1A3F; //expeted result2. offset=805306368, intensity=28<<1. maxReach = offset+intensity = 805306368 + 28<<1 = 1073741824. nonce=132848191. nonce<maxReach, but nonce<offset. not in scan range!
 
-            //set second half of nonce to zero (would be 64bit!) (imho I already did this above, but double-check)
-            header[36] = 0;
-            header[37] = 0;
-            header[38] = 0;
-            header[39] = 0;
-            //set nbits 0 (cpuminer does that)
-            //header[44] = 0;
-            //header[45] = 0;
-            //header[46] = 0;
-            //header[47] = 0;
+            //insert nonce big endian. (endianness doesn't really matter since we later just submit the header as-is)
+            header[32] = (nonce >> 24) & 0xFF;
+            header[33] = (nonce >> 16) & 0xFF;
+            header[34] = (nonce >> 8) & 0xFF;
+            header[35] = (nonce) & 0xFF;
+
             //hash
             b2b.sia_gen_hash(header, 80, hash);
+            /* uint8_t hash2[32];
+             uint32_t *ohash = (uint32_t *)(hash2);
+             swab256(ohash, hash);*/
+
+            // std::vector<uint8_t> hout;
+            //for (int i = 0; i < 32; i++)
+            //  hout.push_back(hash2[i]);
+            //cout << endl << "hash:" << bigmath.toHexString(hout) << endl;
+            //cout << "exp :" << "00000000000006418b86014ff54b457f52665b428d5af57e80b0b7ec84c706e5" << endl;
+
 
             //check output
+
+            //This should be a match!
+            if (i == 0)
+              cout << endl << "hash:" << bigmath.toHexString(hash, 32) << endl;
+
 
             //if (hash[0] < miningTarget.value[31]) { //only check all 256 bits if the first byte is already smaller.
             //   cout << "candidate" << endl;
@@ -142,12 +177,11 @@ class Miner {
 
             if (found == true)break;
 
-
           } //end nonce loop
           if (found == true) {
             cout << "job " << sj.jobID << " found match:" << bigmath.toHexString(hash, 32) << endl;
             cout << "target    :" << bigmath.toHexString(target.value) << endl;
-            cout << "n:" << n << endl;
+            cout << "nonce:" << nonce << endl;
             //copy result into header
             sj.header[32] = header[32];
             sj.header[33] = header[33];
