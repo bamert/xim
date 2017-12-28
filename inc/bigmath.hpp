@@ -10,14 +10,14 @@
 void le32array(uint8_t* buf, int size) {
 
   for (int i = 0; i < size ; i += 4) {
-    uint8_t a = buf[i+0];
-    uint8_t b = buf[i+1];
-    uint8_t c = buf[i+2];
-    uint8_t d = buf[i+3];
-    buf[i+0] = d;
-    buf[i+1] = c;
-    buf[i+2] = b;
-    buf[i+3] = a;
+    uint8_t a = buf[i + 0];
+    uint8_t b = buf[i + 1];
+    uint8_t c = buf[i + 2];
+    uint8_t d = buf[i + 3];
+    buf[i + 0] = d;
+    buf[i + 1] = c;
+    buf[i + 2] = b;
+    buf[i + 3] = a;
   }
 }
 
@@ -142,6 +142,7 @@ class Bigmath {
     }
     return output;
   }
+
   std::vector<uint8_t> bufferToVector(uint8_t* buffer, int length) {
     std::vector<uint8_t> out;
     for (int i = 0; i < length; i++) {

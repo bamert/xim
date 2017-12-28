@@ -34,5 +34,7 @@ include_directories("inc/")
 
 add_executable(xim src/main.cpp )
 add_executable(mwe src/segfaultmwe.cpp)
+add_executable(hdrTest src/hdrTest.cpp)
+
 #target_link_libraries(xim ${CURL_LIBRARIES})
 

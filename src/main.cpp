@@ -8,7 +8,6 @@
 #include "blake2b.hpp"
 
 #include "blakeTest.hpp"
-
 using namespace std;
 using json = nlohmann::json;
 

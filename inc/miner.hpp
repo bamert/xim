@@ -19,19 +19,34 @@ struct SiaJob {
   std::vector<std::vector<uint8_t>> merkleBranches;
   std::string blockVersion;
   std::string nBits;
-  uint32_t offset;
+  uint32_t offset; //Where to start searching the nonce space.
+  uint32_t intensity;//The intensity at which we mine (i.e. the range of nonce to search before we (optionally) change the header)
   std::vector<uint8_t> nTime;
   std::vector<uint8_t> header;
-  Target target; //256bit Bigint
+  Target target; //256bit Bigint (network target)
   bool cleanJobs;
-  SiaJob() {offset = 0;}
+  SiaJob() {offset = 0; intensity = 0x1 << 28;}
 };
 static inline uint32_t le32dec(const void *pp) {
   const uint8_t *p = (uint8_t const *)pp;
   return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
           ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
 }
-
+struct ExtraNonce2 {
+  uint32_t val;
+  uint32_t size;
+  ExtraNonce2(): val(0), size(4) {}
+  ExtraNonce2(uint32_t val, uint32_t size) : val(val), size(size) {}
+  void increment() {
+    val++;
+  }
+  std::vector<uint8_t> bytes() { //get size-byte representation of value
+    std::vector<uint8_t> out(size);
+    for (int i = 0; i < 4; i++)
+      out[i] = (val >> (i * 8));
+    return out;
+  }
+};
 class Miner {
  private:
   std::thread* thread;
@@ -70,20 +85,89 @@ class Miner {
   void setTarget(double difficulty) {
     mtx.lock();
     miningTarget.fromDifficulty(difficulty);
-    //convert to little endian
-    /*for (int i = 0; i < 32; i += 4) {
-      uint8_t a =  miningTarget.value[i + 3];
-      uint8_t b =  miningTarget.value[i + 2];
-      uint8_t c =  miningTarget.value[i + 1];
-      uint8_t d =  miningTarget.value[i];
-
-      miningTarget.value[i] = a;
-      miningTarget.value[i + 1] = b;
-      miningTarget.value[i + 2] = c;
-      miningTarget.value[i + 3] = d;
-    }*/
-
     mtx.unlock();
+  }
+  void computeHeader(SiaJob& sj, std::vector<uint8_t> extraNonce1, ExtraNonce2 en2) {
+    uint8_t buffer[2048];
+    std::vector<uint8_t> tmp;
+    Bigmath bigmath;
+
+    /* Compute difficulty target */
+    auto append = [](uint8_t* buf, std::vector<uint8_t> src)  {
+      for (int i = 0; i < src.size(); i++)
+        buf[i] = src[i];
+      return src.size();
+    };
+
+    int offset = 1;
+    buffer[0] = 0; //has to be a zero
+    offset += append(&buffer[offset], sj.coinb1);
+    offset += append(&buffer[offset], extraNonce1);
+    offset += append(&buffer[offset], en2.bytes());
+    //en2.increment();//update extranonce2
+    offset += append(&buffer[offset], sj.coinb2);
+
+    tmp.assign(buffer, buffer + offset);
+    //cout << "arbtx:" << bigmath.toHexString(tmp) << endl;
+
+    //hash [0,offset] on buffer
+    Blake2b b2b;
+    uint8_t mhash[32];
+    b2b.sia_gen_hash(buffer, offset, mhash);
+    //cout << "arbtx hash" << bigmath.toHexString(mhash,32) << endl;
+
+
+    uint8_t merkleRoot[32]; //256bit
+    memcpy(merkleRoot, mhash, 32);
+
+    //cout << "merkleBranches:" << sj.merkleBranches.size() << endl;
+    for (auto el : sj.merkleBranches) {
+
+      //cout << "merkleRoot" << bigmath.toHexString(merkleRoot,32) << endl;
+      //merkleRoot = blake2b('\x01' + binascii.unhexlify(h) + merkle_root, digest_size = 32).digest();
+      offset = 1;
+      buffer[0] = 1;
+      offset += append(&buffer[offset], el); //markle branch
+      memcpy(&buffer[offset], merkleRoot, 32); //256bit previous merkleRoot
+      b2b.sia_gen_hash(buffer, offset + 32, merkleRoot); //output val to merkleRoot
+    }
+    //cout << "merkleRoot" << bigmath.toHexString(merkleRoot,32) << endl;
+    //cout << "MerkleRoot:" << bigmath.toHexString(merkleRoot, 32) << endl;
+    // cout << "offset (should be 32)" << offset << endl;
+    uint8_t header[80];
+    offset = 0;
+    offset += append(&header[offset], sj.prevHash);
+    offset += append(&header[offset], {0, 0, 0, 0, 0, 0 , 0, 0}); //where we aer gonna put our trial nonce
+    offset +=  append(&header[offset], sj.nTime);
+    memcpy(&header[offset], merkleRoot, 32);
+
+    //Current prevhash:
+    
+    tmp.assign(header, header + 32);
+    //cout << "before:" << bigmath.toHexString(tmp) << endl;
+
+    //le32array(&header[0], 32); //change endianness of prevHash array (4 byte groups)
+    tmp.assign(header, header + 32);
+
+    //cout << "after :" << bigmath.toHexString(tmp) << endl;
+
+
+
+    //le32array(&header[40], 4); //change endianness of nTime (single 4byte field)
+    //le32array(&header[48], 32); //change endianness of merkleroot
+
+
+
+
+
+    /*cout << "header:" << offset << endl;
+    for (int i = 0; i < 80; i++)
+      cout << buffer[i];
+    cout << endl;
+    */
+
+    //Add header to current job
+    sj.header = bigmath.bufferToVector(header, 80);
   }
   bool registerMiningResultCallback(std::function<void(SiaJob)>& submitHeaderr) {
     //attach mining thread
@@ -113,7 +197,7 @@ class Miner {
           uint8_t hash[32];
           uint32_t nonce = 0;
           uint32_t minNonce = sj.offset; //start mining at given offset.
-          uint32_t intensity = 0x1 << 28;//;
+          uint32_t intensity = sj.intensity;//;
 
           bool found = false;
           mtx.lock();
@@ -132,7 +216,7 @@ class Miner {
               std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(now - prev);
               double secs = time_span.count();
               double hashRate = 10000 / secs;
-              cout << 100.*i / float(intensity) << "percent," <<  hashRate/1000000 << "MH/s   \r";
+              cout << 100.*i / float(intensity) << "percent," <<  hashRate / 1000000 << "MH/s   \r";
               prev = now;
             }
 
@@ -152,12 +236,17 @@ class Miner {
             header[35] = (nonce) & 0xFF;
 
             //change endianness of entire buffer in-place
-           
+
             //hash
             b2b.sia_gen_hash(header, 80, hash);
 
-            //check output
 
+
+            //check output
+            std::vector<uint8_t> hdrNonce = {header[32], header[33], header[34], header[35]};
+            //Get human-readable hex representation of everything
+            //hdrNonce[3]++;
+            //cout << "Nonce:" << bigmath.toHexString(hdrNonce) << ", hash:" << bigmath.toHexString(hash, 32) << endl;
 
 
 

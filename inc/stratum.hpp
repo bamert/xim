@@ -30,21 +30,7 @@ struct StratumQuery {
 
 
 
-struct ExtraNonce2 {
-  uint32_t val;
-  uint32_t size;
-  ExtraNonce2(): val(0), size(4) {}
-  ExtraNonce2(uint32_t val, uint32_t size) : val(val), size(size) {}
-  void increment() {
-    val++;
-  }
-  std::vector<uint8_t> bytes() { //get size-byte representation of value
-    std::vector<uint8_t> out(size);
-    for (int i = 0; i < 4; i++)
-      out[size - 1 - i] = (val >> (i * 8));
-    return out;
-  }
-};
+
 class Stratum {
  private:
   /*mining Address*/
@@ -62,8 +48,6 @@ class Stratum {
   std::function<void(json)> callbackFunctorRpc;
   /*Keeps the callback functor for mining results*/
   std::function<void(SiaJob)> callbackFunctorMining;
-
-
 
   std::string miningDifficulty;
   std::vector<uint8_t> extraNonce1;
@@ -196,7 +180,6 @@ class Stratum {
         }
       }
       if (method == StratumMethod::miningAuthorize) {
-        //HMMMM We can't get this yet, this is weird. We receive a zero-error reply though.
         cout << "auth reply1" << endl;
         //RPC gave us a valid response to the mining subscription query
         if ( r["error"].is_null() ) {
@@ -276,7 +259,7 @@ class Stratum {
     sj.prevHash = bigmath.hexStringToBytes(r["params"][1]); //hexStringToBytes
     sj.coinb1 =  bigmath.hexStringToBytes(r["params"][2]); //hexStringToBytes
     sj.coinb2 =  bigmath.hexStringToBytes(r["params"][3]); //hexStringToBytes
-    for (auto& el : r["result"][4]) { //merkle branches, hexStringToBytes
+    for (auto& el : r["params"][4]) { //merkle branches, hexStringToBytes
       sj.merkleBranches.push_back(bigmath.hexStringToBytes(el));
     }
     sj.blockVersion = r["params"][5]; //string
@@ -285,7 +268,7 @@ class Stratum {
     sj.cleanJobs = r["params"][8]; //bool
     cout << "job " << sj.jobID << " received" << endl;
 
-    computeHeader(sj);
+    miner->computeHeader(sj, extraNonce1, en2);
 
     //cout << "nbits:" << sj.nBits << endl;
     //Set network target from nbits
@@ -295,68 +278,7 @@ class Stratum {
     miner->addJob(sj);
   }
   //
-  void computeHeader(SiaJob& sj) {
-    uint8_t buffer[2048];
-    Bigmath bigmath;
-
-    /* Compute difficulty target */
-    auto append = [](uint8_t* buf, std::vector<uint8_t> src)  {
-      for (int i = 0; i < src.size(); i++)
-        buf[i] = src[i];
-      return src.size();
-    };
-
-    int offset = 1;
-    buffer[0] = 0; //has to be a zero
-    offset += append(&buffer[offset], sj.coinb1);
-    offset += append(&buffer[offset], extraNonce1);
-    offset += append(&buffer[offset], en2.bytes());
-    //en2.increment();//update extranonce2
-    offset += append(&buffer[offset], sj.coinb2);
-
-    //hash [0,offset] on buffer
-    Blake2b b2b;
-    uint8_t mhash[32];
-    b2b.sia_gen_hash(buffer, offset, mhash);
-
-
-
-    uint8_t merkleRoot[32]; //256bit
-    memcpy(merkleRoot, mhash, 32);
-
-    for (auto el : sj.merkleBranches) {
-      //merkleRoot = blake2b('\x01' + binascii.unhexlify(h) + merkle_root, digest_size = 32).digest();
-      offset = 1;
-      buffer[0] = 1;
-      offset += append(&buffer[offset], el); //markle branch
-      memcpy(&buffer[offset], merkleRoot, 32); //256bit previous merkleRoot
-      b2b.sia_gen_hash(buffer, offset + 32, merkleRoot); //output val to merkleRoot
-    }
-    //cout << "MerkleRoot:" << bigmath.toHexString(merkleRoot, 32) << endl;
-    // cout << "offset (should be 32)" << offset << endl;
-    uint8_t header[80];
-    offset = 0;
-    offset += append(&header[offset], sj.prevHash);
-    offset += append(&header[offset], {0, 0, 0, 0, 0, 0 , 0, 0}); //where we aer gonna put our trial nonce
-    offset +=  append(&header[offset], sj.nTime);
-    memcpy(&header[offset], merkleRoot, 32);
-    le32array(&header[0], 32); //change endianness of prevHash
-    le32array(&header[40], 4); //change endianness of nTime
-    le32array(&header[48], 32); //change endianness of merkleroot
-
-
-
-
-
-    /*cout << "header:" << offset << endl;
-    for (int i = 0; i < 80; i++)
-      cout << buffer[i];
-    cout << endl;
-    */
-
-    //Add header to current job
-    sj.header = bigmath.bufferToVector(header, 80);
-  }
+  
   void submitHeader(SiaJob sj) {
     Bigmath bigmath;
     //extract nonce that we found from header
