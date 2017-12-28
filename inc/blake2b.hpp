@@ -172,6 +172,14 @@ void swab256(void *dest_p, const void *src_p) {
   dest[6] = swab32(src[1]);
   dest[7] = swab32(src[0]);
 }
+// state context
+  typedef struct {
+    uint8_t b[128];                     // input buffer
+    uint64_t h[8];                      // chained state
+    uint64_t t[2];                      // total number of bytes
+    size_t c;                           // pointer for b[]
+    size_t outlen;                      // digest size
+  } blake2b_ctx;
 
 
 /*
@@ -224,14 +232,6 @@ class Blake2b {
 
  private:
 
-// state context
-  typedef struct {
-    uint8_t b[128];                     // input buffer
-    uint64_t h[8];                      // chained state
-    uint64_t t[2];                      // total number of bytes
-    size_t c;                           // pointer for b[]
-    size_t outlen;                      // digest size
-  } blake2b_ctx;
 
 
 // Compression function. "last" flag indicates last block.

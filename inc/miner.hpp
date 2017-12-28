@@ -3,6 +3,7 @@
 #include <iostream>
 #include <thread>
 #include <queue>
+#include <stack>
 #include <functional>
 #include <mutex>
 #include <chrono>
@@ -34,7 +35,8 @@ struct ExtraNonce2 {
 //Build a job from the information we've received
 struct SiaJob {
   int extraNonce2size;
-  std::vector<uint8_t> extranonce2; //keeps the current extranonce2 (we need it again for the submission)
+  std::vector<uint8_t>
+  extranonce2; //keeps the current extranonce2 (we need it again for the submission)
   std::string jobID;
   std::vector<uint8_t> prevHash;
   std::vector<uint8_t> coinb1;
@@ -58,7 +60,7 @@ class Miner {
   /*Keeps the mining target difficulty*/
   Target miningTarget;
   /* Keeps the jobs*/
-  std::queue<SiaJob> jobs;
+  std::stack<SiaJob> jobs;
 
   /* mutex to add jobs */
   std::mutex mtx;
@@ -80,6 +82,11 @@ class Miner {
   }
   void addJob(SiaJob sj) {
     mtx.lock();
+    //don't keep a queue of tasks
+
+    //  POSSIBLE ERROR:
+    // - hash function has some sort of state and doesn't always return the same result.
+    //- I process jobs that are too old. use stack instead of queue(?)
     jobs.push(sj);
     mtx.unlock();
   }
@@ -146,7 +153,7 @@ class Miner {
     memcpy(&header[offset], merkleRoot, 32);
 
     //Current prevhash:
-    
+
     //tmp.assign(header, header + 32);
     //cout << "before:" << bigmath.toHexString(tmp) << endl;
 
@@ -186,7 +193,7 @@ class Miner {
         mtx.unlock();
         if (!jobsEmpty) {
           mtx.lock();
-          SiaJob sj = jobs.front();
+          SiaJob sj = jobs.top();
           jobs.pop();
           mtx.unlock();
           cout << "job "  << sj.jobID << " running, ";
@@ -217,7 +224,8 @@ class Miner {
             //update range scanning status.
             if (i % 10000 == 0) {
               now = std::chrono::high_resolution_clock::now();
-              std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(now - prev);
+              std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>
+                  (now - prev);
               double secs = time_span.count();
               double hashRate = 10000 / secs;
               cout << 100.*i / float(intensity) << "percent," <<  hashRate / 1000000 << "MH/s   \r";
@@ -234,7 +242,7 @@ class Miner {
 
             //insert nonce big endian. (endianness doesn't really matter since we later just submit the header as-is)
             //le32array(header,80);
-           // nonce |= 1<<29; // set a bit in high range just for fun.
+            // nonce |= 1<<29; // set a bit in high range just for fun.
             header[32] = (nonce >> 24) & 0xFF;
             header[33] = (nonce >> 16) & 0xFF;
             header[34] = (nonce >> 8) & 0xFF;
