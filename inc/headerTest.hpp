@@ -49,7 +49,7 @@ class HeaderTest {
     Bigmath bigmath;
     extraNonce1 = bigmath.hexStringToBytes(msg[0]["result"][1]);
     en2.size = msg[0]["result"][2];
-    en2.val = 6;
+    en2.val = 6; //from message0
 
     SiaJob test;
 
@@ -62,9 +62,7 @@ class HeaderTest {
     test.prevHash = bigmath.hexStringToBytes(msg[2]["params"][1]); //hexStringToBytes
     test.coinb1 =  bigmath.hexStringToBytes(msg[2]["params"][2]); //hexStringToBytes
     test.coinb2 =  bigmath.hexStringToBytes(msg[2]["params"][3]); //hexStringToBytes
-    cout << "mb1:" << msg[2]["params"][4] << endl;
     for (auto& el : msg[2]["params"][4]) { //merkle branches, hexStringToBytes
-      cout << "merkle branch adding" << endl;
       test.merkleBranches.push_back(bigmath.hexStringToBytes(el));
     }
     test.blockVersion = msg[2]["params"][5]; //string
@@ -81,7 +79,8 @@ class HeaderTest {
     cout << "nTime:" << bigmath.toHexString(test.nTime) << endl;
     cout << "job " << test.jobID << " received" << endl;
 
-    miner->computeHeader(test, extraNonce1, en2);
+    test.extranonce2 = en2.bytes();
+    miner->computeHeader(test, extraNonce1);
 
     //cout << "nbits:" << sj.nBits << endl;
     //Set network target from nbits

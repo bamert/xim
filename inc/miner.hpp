@@ -9,24 +9,7 @@
 #include "blake2b.hpp"
 #include "bigmath.hpp"
 
-//Build a job from the information we've received
-struct SiaJob {
-  int extraNonce2size;
-  std::string jobID;
-  std::vector<uint8_t> prevHash;
-  std::vector<uint8_t> coinb1;
-  std::vector<uint8_t> coinb2;
-  std::vector<std::vector<uint8_t>> merkleBranches;
-  std::string blockVersion;
-  std::string nBits;
-  uint32_t offset; //Where to start searching the nonce space.
-  uint32_t intensity;//The intensity at which we mine (i.e. the range of nonce to search before we (optionally) change the header)
-  std::vector<uint8_t> nTime;
-  std::vector<uint8_t> header;
-  Target target; //256bit Bigint (network target)
-  bool cleanJobs;
-  SiaJob() {offset = 0; intensity = 0x1 << 28;}
-};
+
 static inline uint32_t le32dec(const void *pp) {
   const uint8_t *p = (uint8_t const *)pp;
   return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
@@ -47,6 +30,27 @@ struct ExtraNonce2 {
     return out;
   }
 };
+
+//Build a job from the information we've received
+struct SiaJob {
+  int extraNonce2size;
+  std::vector<uint8_t> extranonce2; //keeps the current extranonce2 (we need it again for the submission)
+  std::string jobID;
+  std::vector<uint8_t> prevHash;
+  std::vector<uint8_t> coinb1;
+  std::vector<uint8_t> coinb2;
+  std::vector<std::vector<uint8_t>> merkleBranches;
+  std::string blockVersion;
+  std::string nBits;
+  uint32_t offset; //Where to start searching the nonce space.
+  uint32_t intensity;//The intensity at which we mine (i.e. the range of nonce to search before we (optionally) change the header)
+  std::vector<uint8_t> nTime;
+  std::vector<uint8_t> header;
+  Target target; //256bit Bigint (network target)
+  bool cleanJobs;
+  SiaJob() {offset = 0; intensity = 0x1 << 28;}
+};
+
 class Miner {
  private:
   std::thread* thread;
@@ -87,7 +91,7 @@ class Miner {
     miningTarget.fromDifficulty(difficulty);
     mtx.unlock();
   }
-  void computeHeader(SiaJob& sj, std::vector<uint8_t> extraNonce1, ExtraNonce2 en2) {
+  void computeHeader(SiaJob& sj, std::vector<uint8_t> extraNonce1) {
     uint8_t buffer[2048];
     std::vector<uint8_t> tmp;
     Bigmath bigmath;
@@ -103,7 +107,7 @@ class Miner {
     buffer[0] = 0; //has to be a zero
     offset += append(&buffer[offset], sj.coinb1);
     offset += append(&buffer[offset], extraNonce1);
-    offset += append(&buffer[offset], en2.bytes());
+    offset += append(&buffer[offset], sj.extranonce2);
     //en2.increment();//update extranonce2
     offset += append(&buffer[offset], sj.coinb2);
 
@@ -143,11 +147,11 @@ class Miner {
 
     //Current prevhash:
     
-    tmp.assign(header, header + 32);
+    //tmp.assign(header, header + 32);
     //cout << "before:" << bigmath.toHexString(tmp) << endl;
 
     //le32array(&header[0], 32); //change endianness of prevHash array (4 byte groups)
-    tmp.assign(header, header + 32);
+    //tmp.assign(header, header + 32);
 
     //cout << "after :" << bigmath.toHexString(tmp) << endl;
 
@@ -204,7 +208,7 @@ class Miner {
           Target target = miningTarget;
           mtx.unlock();
           //cout << "inhdr :" << bigmath.toHexString(header, 80) << endl;
-          cout << "target:" << bigmath.toHexString(target.value);
+          //cout << "target:" << bigmath.toHexString(target.value);
           cout << " , intensity:" << intensity << endl;
           //cout << "offset:" << minNonce << endl;
           auto now = std::chrono::high_resolution_clock::now();
@@ -243,7 +247,7 @@ class Miner {
 
 
             //check output
-            std::vector<uint8_t> hdrNonce = {header[32], header[33], header[34], header[35]};
+            //std::vector<uint8_t> hdrNonce = {header[32], header[33], header[34], header[35]};
             //Get human-readable hex representation of everything
             //hdrNonce[3]++;
             //cout << "Nonce:" << bigmath.toHexString(hdrNonce) << ", hash:" << bigmath.toHexString(hash, 32) << endl;

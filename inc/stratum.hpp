@@ -138,7 +138,6 @@ class Stratum {
     else
       id = -1;
 
-    //cout <<  "RECV:" << r.dump() << endl;
     //check if this id is present in the list of our sent queries
     method = sentQueryWithId(id);
     if (method != StratumMethod::none) {
@@ -164,9 +163,6 @@ class Stratum {
           en2.val = 0;
         }
 
-        cout << "notify:" << miningNotify << ", difficulty:" << miningDifficulty << ", extraNonce2size:" <<
-             en2.size << endl;
-
         //Authorize
         json q;
         q["id"] = rpc->getNewId();
@@ -180,10 +176,9 @@ class Stratum {
         }
       }
       if (method == StratumMethod::miningAuthorize) {
-        cout << "auth reply1" << endl;
         //RPC gave us a valid response to the mining subscription query
         if ( r["error"].is_null() ) {
-          cout << "auth reply:" <<  r.dump() << endl;
+          cout << "auth reply: ok" << endl;
 
           /* //mining details are in here:
            if (r["result"][0].is_array()) {
@@ -248,7 +243,7 @@ class Stratum {
 
     }
   }
-  //This has a seperate method for testing purposes. Here we can inject a 
+  //This has a seperate method for testing purposes. Here we can inject a
   //json package that we have the solution for (i.e. collected with wireshark)
   void processMiningNotify(json& r) {
     SiaJob sj;
@@ -267,8 +262,11 @@ class Stratum {
     sj.nTime = bigmath.hexStringToBytes(r["params"][7]); //hexStringToBytes
     sj.cleanJobs = r["params"][8]; //bool
     cout << "job " << sj.jobID << " received" << endl;
+    sj.extranonce2 = en2.bytes();
+    cout << "adding job with en2:" << bigmath.toHexString(sj.extranonce2) << endl;
 
-    miner->computeHeader(sj, extraNonce1, en2);
+    en2.increment();
+    miner->computeHeader(sj, extraNonce1);
 
     //cout << "nbits:" << sj.nBits << endl;
     //Set network target from nbits
@@ -278,22 +276,24 @@ class Stratum {
     miner->addJob(sj);
   }
   //
-  
+
   void submitHeader(SiaJob sj) {
     Bigmath bigmath;
     //extract nonce that we found from header
     std::vector<uint8_t> hdrNonce(sj.header.begin() + 32, sj.header.begin() + 40);
+    std::vector<uint8_t> extraNonce2(sj.header.begin() + 32, sj.header.begin() + 40);
+
     //Get human-readable hex representation of everything
     //hdrNonce[3]++;
     std::string nonce = bigmath.toHexString(hdrNonce);
-    std::string en2hex = bigmath.toHexString(en2.bytes());
-    en2.increment();
+    std::string en2hex = bigmath.toHexString(sj.extranonce2);
     std::string nTime = bigmath.toHexString(sj.nTime);
     json q;
     q["id"] = rpc->getNewId();
     q["method"] = "mining.submit";
     q["params"] = {miningAddress, sj.jobID, en2hex, nTime, nonce};
 
+    cout << "submitting job with en2:" << bigmath.toHexString(sj.extranonce2) << endl;
 
     if (rpc->sendQuery(q)) {
       cout << "job " << sj.jobID << " sent solution (id=" << q["id"]  << ")" << endl;
