@@ -234,6 +234,7 @@ class Miner {
 
             //insert nonce big endian. (endianness doesn't really matter since we later just submit the header as-is)
             //le32array(header,80);
+            nonce |= 1<<29; // set a bit in high range just for fun.
             header[32] = (nonce >> 24) & 0xFF;
             header[33] = (nonce >> 16) & 0xFF;
             header[34] = (nonce >> 8) & 0xFF;
