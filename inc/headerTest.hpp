@@ -55,7 +55,7 @@ class HeaderTest {
 
     test.jobID = "HeaderTest";
     test.offset = 0xeea81a36; //msg3 contains the valid nonce we found: eea81a3600000000, we start searching right at that element.
-    test.intensity = 1; //Don't mine. We know the valid nonce, no need to search.
+    test.intensity = 1; //Don't mine. We know the valid nonce, no need to scan the nonce space.
 
     //Mining details (msg 2)
     //test.jobID =  r["params"][0]; //string

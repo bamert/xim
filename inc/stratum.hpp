@@ -43,7 +43,6 @@ class Stratum {
   /* keeps the sent queries such that we can reidentify the responses*/
   std::vector<StratumQuery> sentQueries;
 
-
   /*Keeps the callback functor for RPC calls*/
   std::function<void(json)> callbackFunctorRpc;
   /*Keeps the callback functor for mining results*/
@@ -53,7 +52,6 @@ class Stratum {
   std::vector<uint8_t> extraNonce1;
 
   ExtraNonce2 en2;
-
   Target miningTarget;
 
   Miner* miner;
@@ -179,21 +177,6 @@ class Stratum {
         //RPC gave us a valid response to the mining subscription query
         if ( r["error"].is_null() ) {
           cout << "auth reply: ok" << endl;
-
-          /* //mining details are in here:
-           if (r["result"][0].is_array()) {
-             for (auto& el : r["result"][0]) { //mining details
-               if (el[0] == "mining.notify")
-                 miningNotify = el[1];
-               if (el[0] == "mining.set_difficulty")
-                 miningDifficulty = el[1];
-             }
-           }//mining details
-           extraNonce1 = r["result"][1];
-           extraNonce2size = r["result"][2];
-          }*/
-          //We'll shut down  after we're authorized
-          //state = StratumState::disconnected;
         }
       }
       if (method == StratumMethod::miningSubmit) {
