@@ -246,7 +246,7 @@ class Stratum {
     sj.cleanJobs = r["params"][8]; //bool
     cout << "job " << sj.jobID << " received" << endl;
     sj.extranonce2 = en2.bytes();
-    cout << "adding job with en2:" << bigmath.toHexString(sj.extranonce2) << endl;
+    cout << "adding job with en1:" << bigmath.toHexString(extraNonce1) << ", en2:" << bigmath.toHexString(sj.extranonce2) << endl;
 
     en2.increment();
     miner->computeHeader(sj, extraNonce1);
