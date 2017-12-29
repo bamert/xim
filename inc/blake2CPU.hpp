@@ -105,22 +105,7 @@ namespace ndb {
     v[b] = ROTR64(v[b] ^ v[c], 63); }
 
 
-uint32_t swab32(uint32_t v) {
-  return bswap_32(v);
-}
-void swab256(void *dest_p, const void *src_p) {
-  uint32_t *dest = (uint32_t *)dest_p;
-  const uint32_t *src = (uint32_t *)src_p;
 
-  dest[0] = swab32(src[7]);
-  dest[1] = swab32(src[6]);
-  dest[2] = swab32(src[5]);
-  dest[3] = swab32(src[4]);
-  dest[4] = swab32(src[3]);
-  dest[5] = swab32(src[2]);
-  dest[6] = swab32(src[1]);
-  dest[7] = swab32(src[0]);
-}
 // state context
 typedef struct {
   uint8_t b[128];                     // input buffer
@@ -255,6 +240,17 @@ class Blake2bCPU {
       ctx.h[0] ^= 0x01010000 ^ (0 << 8) ^ 32;
 
       //This is the same on every iteration, because we just filled h with the same content as on every round.
+      //
+      //
+      //
+      //Instead of computing this over and over, we can just precompute 
+      //the values that need to be loaded into h and v before
+      //we apply the 12 rounds
+      //
+      //
+
+
+
       for (int i = 0; i < 8; i++) {           // init work variables
         v[i] = ctx.h[i];
         v[i + 8] = blake2b_iv[i];
