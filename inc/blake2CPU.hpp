@@ -152,14 +152,14 @@ class Blake2bCPU {
       //we apply the 12 rounds
       //
       //
-      ctx.h[0] = blake2b_iv[0] ^ 0x01010020; //last round
-      ctx.h[1] = blake2b_iv[1];
+      //ctx.h[0] = blake2b_iv[0] ^ 0x01010020; //last round
+     /* ctx.h[1] = blake2b_iv[1];
       ctx.h[2] = blake2b_iv[2];
       ctx.h[3] = blake2b_iv[3];
       ctx.h[4] = blake2b_iv[4];
       ctx.h[5] = blake2b_iv[5];
       ctx.h[6] = blake2b_iv[6];
-      ctx.h[7] = blake2b_iv[7];
+      ctx.h[7] = blake2b_iv[7];*/
 
       v[0] = blake2b_iv[0] ^ 0x01010020;
       v[1] = blake2b_iv[1];
@@ -193,19 +193,16 @@ class Blake2bCPU {
         B2B_G( 3, 4,  9, 14, m[sigma[i][14]], m[sigma[i][15]]);
       }
       //Trace it back from here: which part of v do we need to get the part of h that we need (only first bits!)
-      
-
-      for (int  i = 0; i < 8; ++i )
-        ctx.h[i] ^= v[i] ^ v[i + 8];
-      //----------------End compress
 
 
-      // little endian convert and store
-      for (int i = 0; i < 8; i++) { //computing the first 32bit of the hash already suffices. we may need 64 though, you never know (depends on difficulty)
-        hash[i] =
-          (ctx.h[i >> 3] >> (8 * (i & 7))) & 0xFF; //what's this &0xFF for? AND with all bits set doesn't do anything..
-      }
-      //-------End final
+      //we only care about the first 64 bits of the hash
+      ctx.h[0] = blake2b_iv[0] ^ 0x01010020 ^ v[0] ^ v[8];
+      //convert those first 64bits to big endian. (we don't really have to do that, just convert target and then compare)
+      hash[0] = ctx.h[0] & 0xFF;
+      hash[1] = (ctx.h[0] >> 8) & 0xFF;
+      hash[2] = (ctx.h[0] >> 16) & 0xFF;
+      hash[3] = (ctx.h[0] >> 24) & 0xFF;
+
 
 
       //blake2b_update(&ctx, header, 80);
