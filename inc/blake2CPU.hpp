@@ -204,6 +204,25 @@ class Blake2bCPU {
 
     // blake2b_init(&ctx, 32, NULL, 0);
 
+    ctx.t[0] = 0;                      // input count low word
+    ctx.t[1] = 0;                      // input count high word
+    ctx.c = 0;                         // pointer within buffer
+    ctx.outlen = 32;
+
+    //pre-pad input block
+    for (int i = 0; i < 128; i++)
+      ctx.b[i] = 0;
+    //fill header
+    for (int i = 0; i < 80; i++) {
+      ctx.b[i] = header[i];
+    }
+    //set input data length
+    ctx.c = 80;
+    //---end update
+
+    //---start final
+    ctx.t[0] = 80;                // mark last block offset
+
 
     for (uint32_t k = startNonce; k < endNonce; k++) {
       cout << "nonce2:" << k << endl;
@@ -212,13 +231,16 @@ class Blake2bCPU {
       header[33] = (k >> 16) & 0xFF;
       header[34] = (k >> 8) & 0xFF;
       header[35] = (k) & 0xFF;
-
+//fill new nonce:
+      for (int i = 32; i < 36; i++) {
+        ctx.b[i] = header[i];
+      }
       //init:
       for (int i = 0; i < 8; i++)             // state, "param block"
         ctx.h[i] = blake2b_iv[i];
       ctx.h[0] ^= 0x01010000 ^ (0 << 8) ^ 32;
 
-         //This is the same on every iteration
+      //This is the same on every iteration
       for (int i = 0; i < 8; i++) {           // init work variables
         v[i] = ctx.h[i];
         v[i + 8] = blake2b_iv[i];
@@ -226,36 +248,13 @@ class Blake2bCPU {
 
       v[12] ^= ctx.t[0];                 // low 64 bits of offset
       v[13] ^= ctx.t[1];                 // high 64 bits
-      v[14] = ~v[14];   //it's always the last block.
+      v[14] = ~v[14];   //this is always the last block. (the header we hash is only 80 bytes long, which is less than the size of one block(128b))
 
-
-      ctx.t[0] = 0;                      // input count low word
-      ctx.t[1] = 0;                      // input count high word
-      ctx.c = 0;                         // pointer within buffer
-      ctx.outlen = 32;
-
-      //pre-pad input block
-      for (int i = 0; i < 128; i++)
-        ctx.b[i] = 0;
 
       //---start update
-      //fill header:
-      for (int i = 0; i < 80; i++) {
-        ctx.b[i] = header[i];
-      }
-      //set input data length
-      ctx.c = 80;
-      //---end update
-
-      //---start final
-      ctx.t[0] = 80;                // mark last block offset
-
 
       //blake2b_compress(&ctx, 1);           // final block flag = 1
       //------------start compress:
-
-
-   
       for (int i = 0; i < 16; i++)            // get little-endian words
         m[i] = B2B_GET64(&ctx.b[8 * i]);
 
