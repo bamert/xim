@@ -226,6 +226,26 @@ class Blake2bCPU {
     blake2b_ctx ctx;
     uint8_t hash[32];
     bool found = false;
+    /*
+        for (i = 0; i < 8; i++)             // state, "param block"
+          ctx->h[i] = blake2b_iv[i];
+        ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
+
+        ctx->t[0] = 0;                      // input count low word
+        ctx->t[1] = 0;                      // input count high word
+        ctx->c = 0;                         // pointer within buffer
+        ctx->outlen = outlen;
+
+        for (i = keylen; i < 128; i++)      // zero input block
+          ctx->b[i] = 0;
+        if (keylen > 0) {
+          blake2b_update(ctx, key, keylen);
+          ctx->c = 128;                   // at the end
+        }*/
+
+    // blake2b_init(&ctx, 32, NULL, 0);
+
+
     for (uint32_t k = startNonce; k < endNonce; k++) {
       cout << "nonce2:" << k << endl;
       //Update. Here we can update only the 32bits in question instead of the full work header.
@@ -234,10 +254,47 @@ class Blake2bCPU {
       header[34] = (k >> 8) & 0xFF;
       header[35] = (k) & 0xFF;
 
+      //init:
+      for (int i = 0; i < 8; i++)             // state, "param block"
+        ctx.h[i] = blake2b_iv[i];
+      ctx.h[0] ^= 0x01010000 ^ (0 << 8) ^ 32;
 
-      blake2b_init(&ctx, 32, NULL, 0);
-      blake2b_update(&ctx, header, 80);
-      blake2b_final(&ctx, &hash);
+      ctx.t[0] = 0;                      // input count low word
+      ctx.t[1] = 0;                      // input count high word
+      ctx.c = 0;                         // pointer within buffer
+      ctx.outlen = 32;
+
+      for (int i = 0; i < 128; i++)      // zero input block
+        ctx.b[i] = 0;
+
+
+      //update:
+      for (int i = 0; i < 80; i++) {
+        ctx.b[ctx.c++] = header[i];
+      }
+
+
+      //final
+
+      ctx.t[0] += ctx.c;                // mark last block offset
+      if (ctx.t[0] < ctx.c)             // carry overflow
+        ctx.t[1]++;                    // high word
+
+      //No need. it's already filled with zeros.
+      //while (ctx.c < 128)                // fill up with zeros
+      //  ctx.b[ctx.c++] = 0;
+      
+
+      blake2b_compress(&ctx, 1);           // final block flag = 1
+
+      // little endian convert and store
+      for (int i = 0; i < ctx.outlen; i++) {
+        hash[i] =
+          (ctx.h[i >> 3] >> (8 * (i & 7))) & 0xFF;
+      }
+
+      //blake2b_update(&ctx, header, 80);
+      //blake2b_final(&ctx, &hash);
       for (int i = 0; i < 32; i++) {
         if (hash[i] < target[i]) {
           found = true;
