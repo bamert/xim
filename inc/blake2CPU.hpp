@@ -181,6 +181,15 @@ class Blake2bCPU {
       { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
       { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 }
     };
+
+    const uint64_t blake2b_iv[8] = {
+      0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+      0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
+      0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
+      0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
+    };
+
+
     int i;
     uint64_t v[16], m[16];
 
@@ -216,6 +225,10 @@ class Blake2bCPU {
     for (int i = 0; i < 80; i++) {
       ctx.b[i] = header[i];
     }
+    for (int i = 0; i < 16; i++)            // get little-endian words. same on every iteration except for the one field with the nonce.
+      m[i] = B2B_GET64(&ctx.b[8 * i]);
+
+
     //set input data length
     ctx.c = 80;
     //---end update
@@ -232,15 +245,16 @@ class Blake2bCPU {
       header[34] = (k >> 8) & 0xFF;
       header[35] = (k) & 0xFF;
 //fill new nonce:
-      for (int i = 32; i < 36; i++) {
-        ctx.b[i] = header[i];
-      }
+      //update little endian representation of 64bit nonce
+      m[4] = B2B_GET64(&header[32]);
+
+
       //init:
       for (int i = 0; i < 8; i++)             // state, "param block"
         ctx.h[i] = blake2b_iv[i];
       ctx.h[0] ^= 0x01010000 ^ (0 << 8) ^ 32;
 
-      //This is the same on every iteration
+      //This is the same on every iteration, because we just filled h with the same content as on every round.
       for (int i = 0; i < 8; i++) {           // init work variables
         v[i] = ctx.h[i];
         v[i + 8] = blake2b_iv[i];
@@ -255,8 +269,6 @@ class Blake2bCPU {
 
       //blake2b_compress(&ctx, 1);           // final block flag = 1
       //------------start compress:
-      for (int i = 0; i < 16; i++)            // get little-endian words
-        m[i] = B2B_GET64(&ctx.b[8 * i]);
 
       for (int i = 0; i < 12; i++) {          // twelve rounds
         B2B_G( 0, 4,  8, 12, m[sigma[i][ 0]], m[sigma[i][ 1]]);
@@ -306,12 +318,6 @@ class Blake2bCPU {
 
 
 // Initialization Vector.
-  const uint64_t blake2b_iv[8] = {
-    0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
-    0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
-    0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
-    0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
-  };
 
  private:
 
