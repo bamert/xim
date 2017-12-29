@@ -223,12 +223,14 @@ class Miner {
           ndb::Blake2bCPU b2bcpu;
           uint32_t nonceOut;
 
-          if (b2bcpu.sia_hash_range(header, sj.offset-2, sj.offset + sj.intensity+5, target.value, &nonceOut))
-            cout << "found valid nonce" << endl;
-          else
-            cout << "didn't find nonce" << endl;
+          /* if (b2bcpu.sia_hash_range(header, sj.offset-2, sj.offset + sj.intensity+5, target.value, &nonceOut))
+             cout << "found valid nonce" << endl;
+           else
+             cout << "didn't find nonce" << endl;
+          */
+          found = b2bcpu.sia_hash_range(header, sj.offset, sj.offset + sj.intensity, target.value, &nonceOut);
 
-          for (uint32_t i = 0 ; i < intensity; i++) {
+         /* for (uint32_t i = 0 ; i < intensity; i++) {
             //update range scanning status.
             if (i % 10000 == 0) {
               now = std::chrono::high_resolution_clock::now();
@@ -266,6 +268,7 @@ class Miner {
             if (found == true)break;
 
           } //end nonce loop
+          */
           if (found == true) {
             cout << "job " << sj.jobID << " found match:" << bigmath.toHexString(hash, 32) << endl;
             cout << "target    :" << bigmath.toHexString(target.value) << endl;

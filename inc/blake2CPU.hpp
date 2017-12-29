@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <chrono>
 
 namespace ndb {
 
@@ -24,7 +24,7 @@ namespace ndb {
     (((uint64_t) ((uint8_t *) (p))[6]) << 48) ^ \
     (((uint64_t) ((uint8_t *) (p))[7]) << 56))
 
-// G Mixing function.
+// G Mixing function. a,b,c,d are const. x and y are from input data (offsets can be pre computed)
 #define B2B_G(a, b, c, d, x, y) {   \
     v[a] = v[a] + v[b] + x;         \
     v[d] = ROTR64(v[d] ^ v[a], 32); \
@@ -131,9 +131,22 @@ class Blake2bCPU {
     //---start final
     ctx.t[0] = 80;                // mark last block offset
 
+    auto now = std::chrono::high_resolution_clock::now();
+    auto prev  = std::chrono::high_resolution_clock::now();
+    uint32_t intensity = endNonce - startNonce;
 
     for (uint32_t k = startNonce; k < endNonce; k++) {
-      cout << "nonce2:" << k << endl;
+      //cout << "nonce2:" << k << endl;
+      //output some stats for now:
+      if (k % 10000 == 0) {
+        now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>
+            (now - prev);
+        double secs = time_span.count();
+        double hashRate = 10000 / secs;
+        cout << 100.*k / float(intensity) << "percent," <<  hashRate / 1000000 << "MH/s   \r";
+        prev = now;
+      }
       //Update. Here we can update only the 32bits in question instead of the full work header.
       header[32] = (k >> 24) & 0xFF;
       header[33] = (k >> 16) & 0xFF;
@@ -150,16 +163,6 @@ class Blake2bCPU {
       //Instead of computing this over and over, we can just precompute
       //the values that need to be loaded into h and v before
       //we apply the 12 rounds
-      //
-      //
-      //ctx.h[0] = blake2b_iv[0] ^ 0x01010020; //last round
-     /* ctx.h[1] = blake2b_iv[1];
-      ctx.h[2] = blake2b_iv[2];
-      ctx.h[3] = blake2b_iv[3];
-      ctx.h[4] = blake2b_iv[4];
-      ctx.h[5] = blake2b_iv[5];
-      ctx.h[6] = blake2b_iv[6];
-      ctx.h[7] = blake2b_iv[7];*/
 
       v[0] = blake2b_iv[0] ^ 0x01010020;
       v[1] = blake2b_iv[1];
@@ -182,6 +185,9 @@ class Blake2bCPU {
 
       //---start update
       //------------start compress:
+      //Here we cannot reduce anything. Although we only need 64bits
+      //of the resulting hash, we still have to compute all 12 rounds
+      //with all 8 updates each.
       for (int i = 0; i < 12; i++) {          // twelve rounds
         B2B_G( 0, 4,  8, 12, m[sigma[i][ 0]], m[sigma[i][ 1]]);
         B2B_G( 1, 5,  9, 13, m[sigma[i][ 2]], m[sigma[i][ 3]]);
