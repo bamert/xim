@@ -70,6 +70,13 @@ struct Target {
     // val1>>25 simply equals 0xffff00, thus the calculation is
     double f = double(0xffff00) / difficulty;
     //we get this as an int to shift back 26 bytes. This incurs some accuracy loss which may yield invalid shares.
+
+
+
+    //hypothetical maximum difficulty with the first 64bits zero:
+    //val1   =0x00000000ffff0000000000000000000000000000000000000000000000000000
+    //tarmax =0x0000000000000000ffffffffffffffffffffffffffffffffffffffffffffffff
+    //diff = val1/tarmax = 4.2*10^9. it seems this will suffice easily!
     uint32_t tar = uint32_t(f);
 
     //shift 25 positions to the left again:

@@ -223,7 +223,7 @@ class Miner {
           ndb::Blake2bCPU b2bcpu;
           uint32_t nonceOut;
 
-          if (b2bcpu.sia_hash_range(header, sj.offset, sj.offset + sj.intensity+2, target.value, &nonceOut))
+          if (b2bcpu.sia_hash_range(header, sj.offset-2, sj.offset + sj.intensity+5, target.value, &nonceOut))
             cout << "found valid nonce" << endl;
           else
             cout << "didn't find nonce" << endl;

@@ -128,7 +128,6 @@ class Blake2bCPU {
     //set input data length
     ctx.c = 80;
     //---end update
-
     //---start final
     ctx.t[0] = 80;                // mark last block offset
 
@@ -140,21 +139,9 @@ class Blake2bCPU {
       header[33] = (k >> 16) & 0xFF;
       header[34] = (k >> 8) & 0xFF;
       header[35] = (k) & 0xFF;
-//fill new nonce:
+      //fill new nonce:
       //update little endian representation of 64bit nonce
       m[4] = B2B_GET64(&header[32]);
-
-
-      //init:
-      ctx.h[0] = blake2b_iv[0] ^ 0x01010020; //last round
-      ctx.h[1] = blake2b_iv[1];
-      ctx.h[2] = blake2b_iv[2];
-      ctx.h[3] = blake2b_iv[3];
-      ctx.h[4] = blake2b_iv[4];
-      ctx.h[5] = blake2b_iv[5];
-      ctx.h[6] = blake2b_iv[6];
-      ctx.h[7] = blake2b_iv[7];
-
 
       //This is the same on every iteration, because we just filled h with the same content as on every round.
       //
@@ -165,7 +152,15 @@ class Blake2bCPU {
       //we apply the 12 rounds
       //
       //
-      //for (int i = 0; i < 8; i++) {           // init work variables
+      ctx.h[0] = blake2b_iv[0] ^ 0x01010020; //last round
+      ctx.h[1] = blake2b_iv[1];
+      ctx.h[2] = blake2b_iv[2];
+      ctx.h[3] = blake2b_iv[3];
+      ctx.h[4] = blake2b_iv[4];
+      ctx.h[5] = blake2b_iv[5];
+      ctx.h[6] = blake2b_iv[6];
+      ctx.h[7] = blake2b_iv[7];
+
       v[0] = blake2b_iv[0] ^ 0x01010020;
       v[1] = blake2b_iv[1];
       v[2] = blake2b_iv[2];
@@ -178,26 +173,15 @@ class Blake2bCPU {
       v[9] = blake2b_iv[1];
       v[10] = blake2b_iv[2];
       v[11] = blake2b_iv[3];
-      v[12] = blake2b_iv[4] ^ 80; //^ ctx.t[0];, but t[0] = 80, always.
+      v[12] = blake2b_iv[4] ^ 80; //^ ctx.t[0];, but t[0] = 80, always (header length)
       v[13] = blake2b_iv[5]; //^ ctx.t[1];, but t[1]  = 0, always
       v[14] = ~blake2b_iv[6]; //last block, thus invert  (the header we hash is only 80 bytes long, which is less than the size of one block(128b))
       v[15] = blake2b_iv[7];
 
       //previous loop content
-      //v[i] = ctx.h[i];
-      //v[i + 8] = blake2b_iv[i];
-      //}
-
-      // v[12] ^= ctx.t[0];                 // low 64 bits of offset
-      //v[13] ^= ctx.t[1];                 // high 64 bits
-      //v[14] = ~v[14];   //this is always the last block. (the header we hash is only 80 bytes long, which is less than the size of one block(128b))
-
 
       //---start update
-
-      //blake2b_compress(&ctx, 1);           // final block flag = 1
       //------------start compress:
-
       for (int i = 0; i < 12; i++) {          // twelve rounds
         B2B_G( 0, 4,  8, 12, m[sigma[i][ 0]], m[sigma[i][ 1]]);
         B2B_G( 1, 5,  9, 13, m[sigma[i][ 2]], m[sigma[i][ 3]]);
@@ -208,18 +192,18 @@ class Blake2bCPU {
         B2B_G( 2, 7,  8, 13, m[sigma[i][12]], m[sigma[i][13]]);
         B2B_G( 3, 4,  9, 14, m[sigma[i][14]], m[sigma[i][15]]);
       }
-
       //Trace it back from here: which part of v do we need to get the part of h that we need (only first bits!)
+      
+
       for (int  i = 0; i < 8; ++i )
         ctx.h[i] ^= v[i] ^ v[i + 8];
-
       //----------------End compress
 
 
       // little endian convert and store
-      for (int i = 0; i < ctx.outlen; i++) {
+      for (int i = 0; i < 8; i++) { //computing the first 32bit of the hash already suffices. we may need 64 though, you never know (depends on difficulty)
         hash[i] =
-          (ctx.h[i >> 3] >> (8 * (i & 7))) & 0xFF;
+          (ctx.h[i >> 3] >> (8 * (i & 7))) & 0xFF; //what's this &0xFF for? AND with all bits set doesn't do anything..
       }
       //-------End final
 
