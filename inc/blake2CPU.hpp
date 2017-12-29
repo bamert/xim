@@ -1,43 +1,6 @@
 #ifndef __NDB_BLAKE2BCPU
 #define __NDB_BLAKE2BCPU
 
-/*
-    This is the full blake implementation that is used to compute the headers.
-    It's okay that this is slow.
- */
-
-/*-
- * Copyright 2009 Colin Percival, 2014 savale
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * This file was originally written by Colin Percival as part of the Tarsnap
- * online backup system.
- */
-
-//#include "config.h"
-//#include "miner.h"
-
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -45,16 +8,12 @@
 
 namespace ndb {
 
-
-
 // Cyclic right rotation.
-
 #ifndef ROTR64
 #define ROTR64(x, y)  (((x) >> (y)) ^ ((x) << (64 - (y))))
 #endif
 
 // Little-endian byte access.
-
 #define B2B_GET64(p)                            \
     (((uint64_t) ((uint8_t *) (p))[0]) ^        \
     (((uint64_t) ((uint8_t *) (p))[1]) << 8) ^  \
@@ -66,7 +25,6 @@ namespace ndb {
     (((uint64_t) ((uint8_t *) (p))[7]) << 56))
 
 // G Mixing function.
-
 #define B2B_G(a, b, c, d, x, y) {   \
     v[a] = v[a] + v[b] + x;         \
     v[d] = ROTR64(v[d] ^ v[a], 32); \
@@ -151,26 +109,6 @@ class Blake2bCPU {
     int i;
     uint64_t v[16], m[16];
 
-
-    /*
-        for (i = 0; i < 8; i++)             // state, "param block"
-          ctx->h[i] = blake2b_iv[i];
-        ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
-
-        ctx->t[0] = 0;                      // input count low word
-        ctx->t[1] = 0;                      // input count high word
-        ctx->c = 0;                         // pointer within buffer
-        ctx->outlen = outlen;
-
-        for (i = keylen; i < 128; i++)      // zero input block
-          ctx->b[i] = 0;
-        if (keylen > 0) {
-          blake2b_update(ctx, key, keylen);
-          ctx->c = 128;                   // at the end
-        }*/
-
-    // blake2b_init(&ctx, 32, NULL, 0);
-
     ctx.t[0] = 0;                      // input count low word
     ctx.t[1] = 0;                      // input count high word
     ctx.c = 0;                         // pointer within buffer
@@ -221,9 +159,6 @@ class Blake2bCPU {
       //we apply the 12 rounds
       //
       //
-
-
-
       for (int i = 0; i < 8; i++) {           // init work variables
         v[i] = ctx.h[i];
         v[i + 8] = blake2b_iv[i];
