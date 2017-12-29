@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <chrono>
+#include "bigmath.hpp"
 
 namespace ndb {
 
@@ -23,6 +24,16 @@ namespace ndb {
     (((uint64_t) ((uint8_t *) (p))[5]) << 40) ^ \
     (((uint64_t) ((uint8_t *) (p))[6]) << 48) ^ \
     (((uint64_t) ((uint8_t *) (p))[7]) << 56))
+//Big endian byte access
+#define B2B_BIGGET64(p)                            \
+    (((uint64_t) ((uint8_t *) (p))[7]) ^        \
+    (((uint64_t) ((uint8_t *) (p))[6]) << 8) ^  \
+    (((uint64_t) ((uint8_t *) (p))[5]) << 16) ^ \
+    (((uint64_t) ((uint8_t *) (p))[4]) << 24) ^ \
+    (((uint64_t) ((uint8_t *) (p))[3]) << 32) ^ \
+    (((uint64_t) ((uint8_t *) (p))[2]) << 40) ^ \
+    (((uint64_t) ((uint8_t *) (p))[1]) << 48) ^ \
+    (((uint64_t) ((uint8_t *) (p))[0]) << 56))
 
 // G Mixing function. a,b,c,d are const. x and y are from input data (offsets can be pre computed)
 #define B2B_G(a, b, c, d, x, y) {   \
@@ -35,6 +46,16 @@ namespace ndb {
     v[c] = v[c] + v[d];             \
     v[b] = ROTR64(v[b] ^ v[c], 63); }
 
+//One of twelve rounds
+#define ROUND(i){ \
+        B2B_G( 0, 4,  8, 12, m[sigma[i][ 0]], m[sigma[i][ 1]]);\
+        B2B_G( 1, 5,  9, 13, m[sigma[i][ 2]], m[sigma[i][ 3]]);\
+        B2B_G( 2, 6, 10, 14, m[sigma[i][ 4]], m[sigma[i][ 5]]);\
+        B2B_G( 3, 7, 11, 15, m[sigma[i][ 6]], m[sigma[i][ 7]]);\
+        B2B_G( 0, 5, 10, 15, m[sigma[i][ 8]], m[sigma[i][ 9]]);\
+        B2B_G( 1, 6, 11, 12, m[sigma[i][10]], m[sigma[i][11]]);\
+        B2B_G( 2, 7,  8, 13, m[sigma[i][12]], m[sigma[i][13]]);\
+        B2B_G( 3, 4,  9, 14, m[sigma[i][14]], m[sigma[i][15]]);}
 
 
 // state context
@@ -77,11 +98,35 @@ class Blake2bCPU {
    */
   bool sia_hash_range( unsigned char* header, uint32_t startNonce, uint32_t endNonce, std::vector<uint8_t>& target, uint32_t* nonceOut) {
 
-
+    Bigmath bigmath;
 
     blake2b_ctx ctx;
     uint8_t hash[32];
     bool found = false;
+
+    //convert the first 64bit of the target into little endian for easier comparison.
+    uint8_t tar[8];
+    for (int i = 0; i < 8; i++) {
+      tar[i] = target[i];
+    }
+    uint64_t target64 = B2B_GET64(&tar[0]);
+    cout << "target64::" << std::hex << target64 << endl;
+
+    /*hash[0] = ctx.h[0] & 0xFF;
+    hash[1] = (ctx.h[0] >> 8) & 0xFF;
+    hash[2] = (ctx.h[0] >> 16) & 0xFF;
+    hash[3] = (ctx.h[0] >> 24) & 0xFF;
+    hash[4] = (ctx.h[0] >> 32) & 0xFF;
+    hash[5] = (ctx.h[0] >> 40) & 0xFF;
+    hash[6] = (ctx.h[0] >> 48) & 0xFF;
+    hash[7] = (ctx.h[0] >> 56) & 0xFF;
+    */
+    /* hash[0] = ctx.h[0] & 0xFF;
+      hash[1] = (ctx.h[0] >> 8) & 0xFF;
+      hash[2] = (ctx.h[0] >> 16) & 0xFF;
+      hash[3] = (ctx.h[0] >> 24) & 0xFF;
+    */
+
 
     const uint8_t sigma[12][16] = {
       { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
@@ -109,27 +154,12 @@ class Blake2bCPU {
     int i;
     uint64_t v[16], m[16];
 
-    ctx.t[0] = 0;                      // input count low word
-    ctx.t[1] = 0;                      // input count high word
-    ctx.c = 0;                         // pointer within buffer
-    ctx.outlen = 32;
-
-    //pre-pad input block
-    for (int i = 0; i < 128; i++)
-      ctx.b[i] = 0;
-    //fill header
-    for (int i = 0; i < 80; i++) {
-      ctx.b[i] = header[i];
-    }
-    for (int i = 0; i < 16; i++)            // get little-endian words. same on every iteration except for the one field with the nonce.
-      m[i] = B2B_GET64(&ctx.b[8 * i]);
-
-
-    //set input data length
-    ctx.c = 80;
-    //---end update
-    //---start final
-    ctx.t[0] = 80;                // mark last block offset
+    // get little-endian words. (80 bytes header = 10 x 64 byte words)
+    for (int i = 0; i < 10; i++)
+      m[i] = B2B_GET64(&header[8 * i]);
+    // pad remaining 48 bytes (6 x 64 bit words)
+    for (int i = 10; i < 16; i++)
+      m[i] = 0;
 
     auto now = std::chrono::high_resolution_clock::now();
     auto prev  = std::chrono::high_resolution_clock::now();
@@ -188,26 +218,40 @@ class Blake2bCPU {
       //Here we cannot reduce anything. Although we only need 64bits
       //of the resulting hash, we still have to compute all 12 rounds
       //with all 8 updates each.
-      for (int i = 0; i < 12; i++) {          // twelve rounds
-        B2B_G( 0, 4,  8, 12, m[sigma[i][ 0]], m[sigma[i][ 1]]);
-        B2B_G( 1, 5,  9, 13, m[sigma[i][ 2]], m[sigma[i][ 3]]);
-        B2B_G( 2, 6, 10, 14, m[sigma[i][ 4]], m[sigma[i][ 5]]);
-        B2B_G( 3, 7, 11, 15, m[sigma[i][ 6]], m[sigma[i][ 7]]);
-        B2B_G( 0, 5, 10, 15, m[sigma[i][ 8]], m[sigma[i][ 9]]);
-        B2B_G( 1, 6, 11, 12, m[sigma[i][10]], m[sigma[i][11]]);
-        B2B_G( 2, 7,  8, 13, m[sigma[i][12]], m[sigma[i][13]]);
-        B2B_G( 3, 4,  9, 14, m[sigma[i][14]], m[sigma[i][15]]);
-      }
-      //Trace it back from here: which part of v do we need to get the part of h that we need (only first bits!)
+      //However, note that out of the 10 x 64 bit words in the header, only
+      //one changes (or even just half of it). -> compile code at run-time
+      //as method 
+
+      ROUND(0);
+      ROUND(1);
+      ROUND(2);
+      ROUND(3);
+      ROUND(4);
+      ROUND(5);
+      ROUND(6);
+      ROUND(7);
+      ROUND(8);
+      ROUND(9);
+      ROUND(10);
+      ROUND(11);
+
 
 
       //we only care about the first 64 bits of the hash
       ctx.h[0] = blake2b_iv[0] ^ 0x01010020 ^ v[0] ^ v[8];
-      //convert those first 64bits to big endian. (we don't really have to do that, just convert target and then compare)
+      //cout << "hash64  :" << htole64(ctx.h[0]) << "(" << std::hex << ctx.h[0] << ")";
+      //cout << " is " << ((htole64(ctx.h[0]) <= target64) ? " " : "not " ) << "smaller" << endl;
+
+      //convert those first 64bits to big endian.
+      //nicer way: just convert target and then compare. But this isn't really working yet...
       hash[0] = ctx.h[0] & 0xFF;
       hash[1] = (ctx.h[0] >> 8) & 0xFF;
       hash[2] = (ctx.h[0] >> 16) & 0xFF;
       hash[3] = (ctx.h[0] >> 24) & 0xFF;
+      hash[4] = (ctx.h[0] >> 32) & 0xFF;
+      hash[5] = (ctx.h[0] >> 40) & 0xFF;
+      hash[6] = (ctx.h[0] >> 48) & 0xFF;
+      hash[7] = (ctx.h[0] >> 56) & 0xFF;
 
 
 
@@ -225,9 +269,16 @@ class Blake2bCPU {
       }
 
       if (found == true) {
+
         *nonceOut = k; //store successful nonce
         return true;
       }
+
+
+      /*if (ctx.h[0] < target64) {
+        *nonceOut = k; //store successful nonce
+        return true;
+      }*/
     }
     return false;
   }

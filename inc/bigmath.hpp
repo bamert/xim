@@ -149,6 +149,19 @@ class Bigmath {
     }
     return output;
   }
+  std::string toHexString(std::string buffer) {
+    static const char* const lut = "0123456789ABCDEF";
+
+    std::string output;
+    int length = buffer.size();
+    output.reserve(2 * length);
+    for (size_t i = 0; i < length; ++i) {
+      const uint8_t c = buffer[i];
+      output.push_back(lut[c >> 4]);
+      output.push_back(lut[c & 15]);
+    }
+    return output;
+  }
 
   std::vector<uint8_t> bufferToVector(uint8_t* buffer, int length) {
     std::vector<uint8_t> out;

@@ -218,61 +218,17 @@ class Miner {
           Target target = miningTarget;
           mtx.unlock();
           cout << " , intensity:" << intensity << endl;
-          auto now = std::chrono::high_resolution_clock::now();
-          auto prev  = std::chrono::high_resolution_clock::now();
+          
+
           ndb::Blake2bCPU b2bcpu;
           uint32_t nonceOut;
-
-          /* if (b2bcpu.sia_hash_range(header, sj.offset-2, sj.offset + sj.intensity+5, target.value, &nonceOut))
-             cout << "found valid nonce" << endl;
-           else
-             cout << "didn't find nonce" << endl;
-          */
+          //This modifies the nonce in place, careful!
           found = b2bcpu.sia_hash_range(header, sj.offset, sj.offset + sj.intensity, target.value, &nonceOut);
 
-         /* for (uint32_t i = 0 ; i < intensity; i++) {
-            //update range scanning status.
-            if (i % 10000 == 0) {
-              now = std::chrono::high_resolution_clock::now();
-              std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>
-                  (now - prev);
-              double secs = time_span.count();
-              double hashRate = 10000 / secs;
-              cout << 100.*i / float(intensity) << "percent," <<  hashRate / 1000000 << "MH/s   \r";
-              prev = now;
-            }
-
-
-            nonce = i + minNonce;
-            header[32] = (nonce >> 24) & 0xFF;
-            header[33] = (nonce >> 16) & 0xFF;
-            header[34] = (nonce >> 8) & 0xFF;
-            header[35] = (nonce) & 0xFF;
-
-            //change endianness of entire buffer in-place
-
-            //hash
-            b2b.sia_gen_hash(header, 80, hash);
-
-            for (int i = 0; i < 32; i++) {
-              if (hash[i] < target.value[i]) {
-                found = true;
-                break;
-              }
-              if (hash[i] > target.value[i]) {
-                found = false;
-                break;
-              }
-            }
-
-            if (found == true)break;
-
-          } //end nonce loop
-          */
           if (found == true) {
             cout << "job " << sj.jobID << " found match:" << bigmath.toHexString(hash, 32) << endl;
             cout << "target    :" << bigmath.toHexString(target.value) << endl;
-            cout << "nonce:" << nonce << endl;
+            cout << "nonce:" << nonceOut << endl;
             //copy result into header
             sj.header[32] = header[32];
             sj.header[33] = header[33];
