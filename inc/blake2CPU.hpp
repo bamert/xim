@@ -9,7 +9,7 @@
 
 namespace ndb {
 
-// Cyclic right rotation.
+// Cyclic right rotation. (non overflowing)
 #ifndef ROTR64
 #define ROTR64(x, y)  (((x) >> (y)) ^ ((x) << (64 - (y))))
 #endif
@@ -68,17 +68,15 @@ typedef struct {
 } blake2b_ctx;
 
 
-/*
- * Encode a length len/4 vector of (uint32_t) into a length len vector of
- * (unsigned char) in big-endian form.  Assumes len is a multiple of 4.
- */
-static inline void
-be32enc_vect(uint32_t *dst, const uint32_t *src, uint32_t len) {
-  uint32_t i;
-
-  for (i = 0; i < len; i++)
-    dst[i] = htobe32(src[i]);
+uint64_t swapLong(void *X) {
+  uint64_t x = (uint64_t) X;
+  x = (x & 0x00000000FFFFFFFF) << 32 | (x & 0xFFFFFFFF00000000) >> 32;
+  x = (x & 0x0000FFFF0000FFFF) << 16 | (x & 0xFFFF0000FFFF0000) >> 16;
+  x = (x & 0x00FF00FF00FF00FF) << 8  | (x & 0xFF00FF00FF00FF00) >> 8;
+  return x;
 }
+
+
 
 
 class Blake2bCPU {
@@ -105,12 +103,12 @@ class Blake2bCPU {
     bool found = false;
 
     //convert the first 64bit of the target into little endian for easier comparison.
-    uint8_t tar[8];
+   /* uint8_t tar[8];
     for (int i = 0; i < 8; i++) {
       tar[i] = target[i];
     }
     uint64_t target64 = B2B_GET64(&tar[0]);
-    cout << "target64::" << std::hex << target64 << endl;
+    cout << "target64::" << std::hex << target64 << endl;*/
 
     /*hash[0] = ctx.h[0] & 0xFF;
     hash[1] = (ctx.h[0] >> 8) & 0xFF;
@@ -151,7 +149,7 @@ class Blake2bCPU {
     };
 
 
-    int i;
+    //int i;
     uint64_t v[16], m[16];
 
     // get little-endian words. (80 bytes header = 10 x 64 byte words)
@@ -220,7 +218,7 @@ class Blake2bCPU {
       //with all 8 updates each.
       //However, note that out of the 10 x 64 bit words in the header, only
       //one changes (or even just half of it). -> compile code at run-time
-      //as method 
+      //as method
 
       ROUND(0);
       ROUND(1);
@@ -239,8 +237,8 @@ class Blake2bCPU {
 
       //we only care about the first 64 bits of the hash
       ctx.h[0] = blake2b_iv[0] ^ 0x01010020 ^ v[0] ^ v[8];
-      //cout << "hash64  :" << htole64(ctx.h[0]) << "(" << std::hex << ctx.h[0] << ")";
-      //cout << " is " << ((htole64(ctx.h[0]) <= target64) ? " " : "not " ) << "smaller" << endl;
+     // cout << "hash64  :" << swapLong(&ctx.h[0]) << "(" << std::hex << swapLong(&ctx.h[0]) << ")";
+      //cout << " is " << ( (swapLong(&ctx.h[0]) <= target64) ? " " : "not " ) << "smaller" << endl;
 
       //convert those first 64bits to big endian.
       //nicer way: just convert target and then compare. But this isn't really working yet...
@@ -255,8 +253,6 @@ class Blake2bCPU {
 
 
 
-      //blake2b_update(&ctx, header, 80);
-      //blake2b_final(&ctx, &hash);
       for (int i = 0; i < 32; i++) {
         if (hash[i] < target[i]) {
           found = true;
