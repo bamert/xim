@@ -43,37 +43,10 @@
 #include <string.h>
 
 
-#ifdef __APPLE__
-
-#include <libkern/OSByteOrder.h>
-
-#define htobe16(x) OSSwapHostToBigInt16(x)
-#define htole16(x) OSSwapHostToLittleInt16(x)
-#define be16toh(x) OSSwapBigToHostInt16(x)
-#define le16toh(x) OSSwapLittleToHostInt16(x)
-
-#define htobe32(x) OSSwapHostToBigInt32(x)
-#define htole32(x) OSSwapHostToLittleInt32(x)
-#define be32toh(x) OSSwapBigToHostInt32(x)
-#define le32toh(x) OSSwapLittleToHostInt32(x)
-
-#define htobe64(x) OSSwapHostToBigInt64(x)
-#define htole64(x) OSSwapHostToLittleInt64(x)
-#define be64toh(x) OSSwapBigToHostInt64(x)
-#define le64toh(x) OSSwapLittleToHostInt64(x)
-
-#endif
-
 namespace ndb {
 
 
-#define bswap_16(value)  \
-  ((((value) & 0xff) << 8) | ((value) >> 8))
 
-
-#define bswap_32(value) \
-  (((uint32_t)bswap_16((uint16_t)((value) & 0xffff)) << 16) | \
-  (uint32_t)bswap_16((uint16_t)((value) >> 16)))
 // Cyclic right rotation.
 
 #ifndef ROTR64
@@ -277,6 +250,7 @@ class Blake2bCPU {
         B2B_G( 3, 4,  9, 14, m[sigma[i][14]], m[sigma[i][15]]);
       }
 
+      //Trace it back from here: which part of v do we need to get the part of h that we need (only first bits!)
       for (int  i = 0; i < 8; ++i )
         ctx.h[i] ^= v[i] ^ v[i + 8];
 
