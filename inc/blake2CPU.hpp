@@ -1,9 +1,9 @@
-#ifndef __NDB_BLAKE2B
-#define __NDB_BLAKE2B
+#ifndef __NDB_BLAKE2BCPU
+#define __NDB_BLAKE2BCPU
 
 /*
     This is the full blake implementation that is used to compute the headers.
-    It's okay that this is slow.   
+    It's okay that this is slow.
  */
 
 /*-
@@ -42,6 +42,7 @@
 #include <stdint.h>
 #include <string.h>
 
+
 #ifdef __APPLE__
 
 #include <libkern/OSByteOrder.h>
@@ -62,6 +63,9 @@
 #define le64toh(x) OSSwapLittleToHostInt64(x)
 
 #endif
+
+namespace ndb {
+
 
 #define bswap_16(value)  \
   ((((value) & 0xff) << 8) | ((value) >> 8))
@@ -178,13 +182,13 @@ void swab256(void *dest_p, const void *src_p) {
   dest[7] = swab32(src[0]);
 }
 // state context
-  typedef struct {
-    uint8_t b[128];                     // input buffer
-    uint64_t h[8];                      // chained state
-    uint64_t t[2];                      // total number of bytes
-    size_t c;                           // pointer for b[]
-    size_t outlen;                      // digest size
-  } blake2b_ctx;
+typedef struct {
+  uint8_t b[128];                     // input buffer
+  uint64_t h[8];                      // chained state
+  uint64_t t[2];                      // total number of bytes
+  size_t c;                           // pointer for b[]
+  size_t outlen;                      // digest size
+} blake2b_ctx;
 
 
 /*
@@ -200,13 +204,59 @@ be32enc_vect(uint32_t *dst, const uint32_t *src, uint32_t len) {
 }
 
 
-class Blake2b {
+class Blake2bCPU {
  public:
 
-  Blake2b() {
-    //doing nothing so far.
+  Blake2bCPU() {
   }
-  
+
+  /* Scans a nonce range.
+   *
+   * @param[in]  header    The header (80 byte)
+   * @param[in]  start     The start offset (little endian!)
+   * @param[in]  end       The end offset (little endian!)
+   * @param      nonceOut  The nonce out. This is set if we found a valid nonce
+   *
+   * @return     true if nonce found, false if not.
+   */
+  bool sia_hash_range( unsigned char* header, uint32_t startNonce, uint32_t endNonce, std::vector<uint8_t>& target, uint32_t* nonceOut) {
+
+
+
+    blake2b_ctx ctx;
+    uint8_t hash[32];
+    bool found = false;
+    for (uint32_t k = startNonce; k < endNonce; k++) {
+      cout << "nonce2:" << k << endl;
+      //Update. Here we can update only the 32bits in question instead of the full work header.
+      header[32] = (k >> 24) & 0xFF;
+      header[33] = (k >> 16) & 0xFF;
+      header[34] = (k >> 8) & 0xFF;
+      header[35] = (k) & 0xFF;
+
+
+      blake2b_init(&ctx, 32, NULL, 0);
+      blake2b_update(&ctx, header, 80);
+      blake2b_final(&ctx, &hash);
+      for (int i = 0; i < 32; i++) {
+        if (hash[i] < target[i]) {
+          found = true;
+          break;
+        }
+        if (hash[i] > target[i]) {
+          found = false;
+          break;
+        }
+      }
+
+      if (found == true) {
+        *nonceOut = k; //store successful nonce
+        return true;
+      }
+    }
+    return false;
+  }
+
   void sia_gen_hash(const unsigned char *data, unsigned int len, unsigned char *hash) {
     blake2b_ctx ctx;
     blake2b_init(&ctx, 32, NULL, 0);
@@ -228,7 +278,7 @@ class Blake2b {
   }
 
 // Initialization Vector.
-   const uint64_t blake2b_iv[8] = {
+  const uint64_t blake2b_iv[8] = {
     0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
     0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
     0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
@@ -241,7 +291,7 @@ class Blake2b {
 
 // Compression function. "last" flag indicates last block.
 
-   void blake2b_compress(blake2b_ctx *ctx, int last) {
+  void blake2b_compress(blake2b_ctx *ctx, int last) {
     const uint8_t sigma[12][16] = {
       { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
       { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 },
@@ -291,7 +341,7 @@ class Blake2b {
 //      1 <= outlen <= 64 gives the digest size in bytes.
 //      Secret key (also <= 64 bytes) is optional (keylen = 0).
 
-   int blake2b_init(blake2b_ctx *ctx, size_t outlen,
+  int blake2b_init(blake2b_ctx *ctx, size_t outlen,
                    const void *key, size_t keylen) {      // (keylen=0: no key)
     size_t i;
 
@@ -319,7 +369,7 @@ class Blake2b {
 
 // Add "inlen" bytes from "in" into the hash.
 
-   void blake2b_update(blake2b_ctx *ctx,
+  void blake2b_update(blake2b_ctx *ctx,
                       const void *in, size_t inlen) {     // data bytes
     size_t i;
 
@@ -338,7 +388,7 @@ class Blake2b {
 // Generate the message digest (size given in init).
 //      Result placed in "out".
 
-   void blake2b_final(blake2b_ctx *ctx, void *out) {
+  void blake2b_final(blake2b_ctx *ctx, void *out) {
     size_t i;
 
     ctx->t[0] += ctx->c;                // mark last block offset
@@ -357,5 +407,5 @@ class Blake2b {
   }
 
 };
-
+};
 #endif

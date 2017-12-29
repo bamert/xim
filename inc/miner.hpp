@@ -8,6 +8,7 @@
 #include <mutex>
 #include <chrono>
 #include "blake2b.hpp"
+#include "blake2CPU.hpp"
 #include "bigmath.hpp"
 
 
@@ -59,6 +60,7 @@ class Miner {
   bool threadRunning;
   /*Keeps the mining target difficulty*/
   Target miningTarget;
+
   /* Keeps the jobs*/
   std::stack<SiaJob> jobs;
 
@@ -200,6 +202,7 @@ class Miner {
           //Mine work, send result if there is oen
           //Mine this first one right here.
           uint8_t header[80];
+
           //copy header
           for (int i = 0; i < 80; i++)
             header[i] = sj.header[i];
@@ -214,12 +217,17 @@ class Miner {
           mtx.lock();
           Target target = miningTarget;
           mtx.unlock();
-          //cout << "inhdr :" << bigmath.toHexString(header, 80) << endl;
-          //cout << "target:" << bigmath.toHexString(target.value);
           cout << " , intensity:" << intensity << endl;
-          //cout << "offset:" << minNonce << endl;
           auto now = std::chrono::high_resolution_clock::now();
           auto prev  = std::chrono::high_resolution_clock::now();
+          ndb::Blake2bCPU b2bcpu;
+          uint32_t nonceOut;
+
+          if (b2bcpu.sia_hash_range(header, sj.offset, sj.offset + sj.intensity+2, target.value, &nonceOut))
+            cout << "found valid nonce" << endl;
+          else
+            cout << "didn't find nonce" << endl;
+
           for (uint32_t i = 0 ; i < intensity; i++) {
             //update range scanning status.
             if (i % 10000 == 0) {
@@ -234,15 +242,6 @@ class Miner {
 
 
             nonce = i + minNonce;
-            //we just pick the correct nonce direclty:
-            //nonce1 88, 47, 107, 95,
-            //nonce2 7, 235, 26, 63,
-            //nonce = 0x582F6B5F; //expected result1 offset=5 * (28 << 1), intensity=28 <<1. maxReach = offset+intensity = 6 * (28 << 1) = 1610612736 nonce: 1479502687. nonce<maxReach: should be possible to find this!
-            //nonce = 0x07EB1A3F; //expeted result2. offset=805306368, intensity=28<<1. maxReach = offset+intensity = 805306368 + 28<<1 = 1073741824. nonce=132848191. nonce<maxReach, but nonce<offset. not in scan range!
-
-            //insert nonce big endian. (endianness doesn't really matter since we later just submit the header as-is)
-            //le32array(header,80);
-            // nonce |= 1<<29; // set a bit in high range just for fun.
             header[32] = (nonce >> 24) & 0xFF;
             header[33] = (nonce >> 16) & 0xFF;
             header[34] = (nonce >> 8) & 0xFF;
@@ -253,18 +252,8 @@ class Miner {
             //hash
             b2b.sia_gen_hash(header, 80, hash);
 
-
-
-            //check output
-            //std::vector<uint8_t> hdrNonce = {header[32], header[33], header[34], header[35]};
-            //Get human-readable hex representation of everything
-            //hdrNonce[3]++;
-            //cout << "Nonce:" << bigmath.toHexString(hdrNonce) << ", hash:" << bigmath.toHexString(hash, 32) << endl;
-
-
-
             for (int i = 0; i < 32; i++) {
-              if (hash[i] < target.value[i]) { //we handle the reverse byte order in here.
+              if (hash[i] < target.value[i]) {
                 found = true;
                 break;
               }
