@@ -146,27 +146,51 @@ class Blake2bCPU {
 
 
       //init:
-      for (int i = 0; i < 8; i++)             // state, "param block"
-        ctx.h[i] = blake2b_iv[i];
-      ctx.h[0] ^= 0x01010000 ^ (0 << 8) ^ 32;
+      ctx.h[0] = blake2b_iv[0] ^ 0x01010020; //last round
+      ctx.h[1] = blake2b_iv[1];
+      ctx.h[2] = blake2b_iv[2];
+      ctx.h[3] = blake2b_iv[3];
+      ctx.h[4] = blake2b_iv[4];
+      ctx.h[5] = blake2b_iv[5];
+      ctx.h[6] = blake2b_iv[6];
+      ctx.h[7] = blake2b_iv[7];
+
 
       //This is the same on every iteration, because we just filled h with the same content as on every round.
       //
       //
       //
-      //Instead of computing this over and over, we can just precompute 
+      //Instead of computing this over and over, we can just precompute
       //the values that need to be loaded into h and v before
       //we apply the 12 rounds
       //
       //
-      for (int i = 0; i < 8; i++) {           // init work variables
-        v[i] = ctx.h[i];
-        v[i + 8] = blake2b_iv[i];
-      }
+      //for (int i = 0; i < 8; i++) {           // init work variables
+      v[0] = blake2b_iv[0] ^ 0x01010020;
+      v[1] = blake2b_iv[1];
+      v[2] = blake2b_iv[2];
+      v[3] = blake2b_iv[3];
+      v[4] = blake2b_iv[4];
+      v[5] = blake2b_iv[5];
+      v[6] = blake2b_iv[6];
+      v[7] = blake2b_iv[7];
+      v[8] = blake2b_iv[0]; //not the last round thingy from above
+      v[9] = blake2b_iv[1];
+      v[10] = blake2b_iv[2];
+      v[11] = blake2b_iv[3];
+      v[12] = blake2b_iv[4] ^ 80; //^ ctx.t[0];, but t[0] = 80, always.
+      v[13] = blake2b_iv[5]; //^ ctx.t[1];, but t[1]  = 0, always
+      v[14] = ~blake2b_iv[6]; //last block, thus invert  (the header we hash is only 80 bytes long, which is less than the size of one block(128b))
+      v[15] = blake2b_iv[7];
 
-      v[12] ^= ctx.t[0];                 // low 64 bits of offset
-      v[13] ^= ctx.t[1];                 // high 64 bits
-      v[14] = ~v[14];   //this is always the last block. (the header we hash is only 80 bytes long, which is less than the size of one block(128b))
+      //previous loop content
+      //v[i] = ctx.h[i];
+      //v[i + 8] = blake2b_iv[i];
+      //}
+
+      // v[12] ^= ctx.t[0];                 // low 64 bits of offset
+      //v[13] ^= ctx.t[1];                 // high 64 bits
+      //v[14] = ~v[14];   //this is always the last block. (the header we hash is only 80 bytes long, which is less than the size of one block(128b))
 
 
       //---start update
