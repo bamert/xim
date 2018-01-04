@@ -58,6 +58,111 @@ namespace ndb {
         B2B_G( 3, 4,  9, 14, m[sigma[i][14]], m[sigma[i][15]]);}
 
 
+#define ROUNDS(m,nonce){ \
+        B2B_G( 0, 4,  8, 12, m[0], m[1]);\
+        B2B_G( 1, 5,  9, 13, m[2], m[3]);\
+        B2B_G( 2, 6, 10, 14, nonce, m[5]);\
+        B2B_G( 3, 7, 11, 15, m[6], m[7]);\
+        B2B_G( 0, 5, 10, 15, m[8], m[9]);\
+        B2B_G( 1, 6, 11, 12, m[10], m[11]);\
+        B2B_G( 2, 7,  8, 13, m[12], m[13]);\
+        B2B_G( 3, 4,  9, 14, m[14], m[15]);\
+         B2B_G( 0, 4,  8, 12, m[14], m[10]);\
+        B2B_G( 1, 5,  9, 13, nonce, m[8]);\
+        B2B_G( 2, 6, 10, 14, m[9], m[15]);\
+        B2B_G( 3, 7, 11, 15, m[13], m[6]);\
+        B2B_G( 0, 5, 10, 15, m[1], m[12]);\
+        B2B_G( 1, 6, 11, 12, m[0], m[2]);\
+        B2B_G( 2, 7,  8, 13, m[11], m[7]);\
+        B2B_G( 3, 4,  9, 14, m[5], m[3]);\
+         B2B_G( 0, 4,  8, 12, m[11], m[8]);\
+        B2B_G( 1, 5,  9, 13, m[12], m[0]);\
+        B2B_G( 2, 6, 10, 14, m[5], m[2]);\
+        B2B_G( 3, 7, 11, 15, m[15], m[13]);\
+        B2B_G( 0, 5, 10, 15, m[10], m[14]);\
+        B2B_G( 1, 6, 11, 12, m[3], m[6]);\
+        B2B_G( 2, 7,  8, 13, m[7], m[1]);\
+        B2B_G( 3, 4,  9, 14, m[9], nonce);\
+         B2B_G( 0, 4,  8, 12, m[7], m[9]);\
+        B2B_G( 1, 5,  9, 13, m[3], m[1]);\
+        B2B_G( 2, 6, 10, 14, m[13], m[12]);\
+        B2B_G( 3, 7, 11, 15, m[11], m[14]);\
+        B2B_G( 0, 5, 10, 15, m[2], m[6]);\
+        B2B_G( 1, 6, 11, 12, m[5], m[10]);\
+        B2B_G( 2, 7,  8, 13, nonce, m[0]);\
+        B2B_G( 3, 4,  9, 14, m[15], m[8]);\
+         B2B_G( 0, 4,  8, 12, m[9], m[0]);\
+        B2B_G( 1, 5,  9, 13, m[5], m[7]);\
+        B2B_G( 2, 6, 10, 14, m[2], nonce);\
+        B2B_G( 3, 7, 11, 15, m[10], m[15]);\
+        B2B_G( 0, 5, 10, 15, m[14], m[1]);\
+        B2B_G( 1, 6, 11, 12, m[11], m[12]);\
+        B2B_G( 2, 7,  8, 13, m[6], m[8]);\
+        B2B_G( 3, 4,  9, 14, m[3], m[13]);\
+         B2B_G( 0, 4,  8, 12, m[2], m[12]);\
+        B2B_G( 1, 5,  9, 13, m[6], m[10]);\
+        B2B_G( 2, 6, 10, 14, m[0], m[11]);\
+        B2B_G( 3, 7, 11, 15, m[8], m[3]);\
+        B2B_G( 0, 5, 10, 15, nonce, m[13]);\
+        B2B_G( 1, 6, 11, 12, m[7], m[5]);\
+        B2B_G( 2, 7,  8, 13, m[15], m[14]);\
+        B2B_G( 3, 4,  9, 14, m[1], m[9]);\
+         B2B_G( 0, 4,  8, 12, m[12], m[5]);\
+        B2B_G( 1, 5,  9, 13, m[1], m[15]);\
+        B2B_G( 2, 6, 10, 14, m[14], m[13]);\
+        B2B_G( 3, 7, 11, 15, nonce, m[10]);\
+        B2B_G( 0, 5, 10, 15, m[0], m[7]);\
+        B2B_G( 1, 6, 11, 12, m[6], m[3]);\
+        B2B_G( 2, 7,  8, 13, m[9], m[2]);\
+        B2B_G( 3, 4,  9, 14, m[8], m[11]);\
+         B2B_G( 0, 4,  8, 12, m[13], m[11]);\
+        B2B_G( 1, 5,  9, 13, m[7], m[14]);\
+        B2B_G( 2, 6, 10, 14, m[12], m[1]);\
+        B2B_G( 3, 7, 11, 15, m[3], m[9]);\
+        B2B_G( 0, 5, 10, 15, m[5], m[0]);\
+        B2B_G( 1, 6, 11, 12, m[15], nonce);\
+        B2B_G( 2, 7,  8, 13, m[8], m[6]);\
+        B2B_G( 3, 4,  9, 14, m[2], m[10]);\
+         B2B_G( 0, 4,  8, 12, m[6], m[15]);\
+        B2B_G( 1, 5,  9, 13, m[14], m[9]);\
+        B2B_G( 2, 6, 10, 14, m[11], m[3]);\
+        B2B_G( 3, 7, 11, 15, m[0], m[8]);\
+        B2B_G( 0, 5, 10, 15, m[12], m[2]);\
+        B2B_G( 1, 6, 11, 12, m[13], m[7]);\
+        B2B_G( 2, 7,  8, 13, m[1], nonce);\
+        B2B_G( 3, 4,  9, 14, m[10], m[5]);\
+         B2B_G( 0, 4,  8, 12, m[10], m[2]);\
+        B2B_G( 1, 5,  9, 13, m[8], nonce);\
+        B2B_G( 2, 6, 10, 14, m[7], m[6]);\
+        B2B_G( 3, 7, 11, 15, m[1], m[5]);\
+        B2B_G( 0, 5, 10, 15, m[15], m[11]);\
+        B2B_G( 1, 6, 11, 12, m[9], m[14]);\
+        B2B_G( 2, 7,  8, 13, m[3], m[12]);\
+        B2B_G( 3, 4,  9, 14, m[13], m[0]);\
+        B2B_G( 0, 4,  8, 12, m[0], m[1]);\
+        B2B_G( 1, 5,  9, 13, m[2], m[3]);\
+        B2B_G( 2, 6, 10, 14, nonce, m[5]);\
+        B2B_G( 3, 7, 11, 15, m[6], m[7]);\
+        B2B_G( 0, 5, 10, 15, m[8], m[9]);\
+        B2B_G( 1, 6, 11, 12, m[10], m[11]);\
+        B2B_G( 2, 7,  8, 13, m[12], m[13]);\
+        B2B_G( 3, 4,  9, 14, m[14], m[15]);\
+         B2B_G( 0, 4,  8, 12, m[14], m[10]);\
+        B2B_G( 1, 5,  9, 13, nonce, m[8]);\
+        B2B_G( 2, 6, 10, 14, m[9], m[15]);\
+        B2B_G( 3, 7, 11, 15, m[13], m[6]);\
+        B2B_G( 0, 5, 10, 15, m[1], m[12]);\
+        B2B_G( 1, 6, 11, 12, m[0], m[2]);\
+        B2B_G( 2, 7,  8, 13, m[11], m[7]);\
+        B2B_G( 3, 4,  9, 14, m[5], m[3]);}
+
+
+
+
+
+
+
+
 // state context
 typedef struct {
   uint8_t b[128];                     // input buffer
@@ -94,7 +199,8 @@ class Blake2bCPU {
    *
    * @return     true if nonce found, false if not.
    */
-  bool sia_hash_range( unsigned char* header, uint32_t startNonce, uint32_t endNonce, std::vector<uint8_t>& target, uint32_t* nonceOut) {
+  bool sia_hash_range( unsigned char* header, uint32_t startNonce, uint32_t endNonce,
+                       std::vector<uint8_t>& target, uint32_t* nonceOut) {
 
     Bigmath bigmath;
 
@@ -103,12 +209,12 @@ class Blake2bCPU {
     bool found = false;
 
     //convert the first 64bit of the target into little endian for easier comparison.
-   /* uint8_t tar[8];
-    for (int i = 0; i < 8; i++) {
-      tar[i] = target[i];
-    }
-    uint64_t target64 = B2B_GET64(&tar[0]);
-    cout << "target64::" << std::hex << target64 << endl;*/
+    /* uint8_t tar[8];
+     for (int i = 0; i < 8; i++) {
+       tar[i] = target[i];
+     }
+     uint64_t target64 = B2B_GET64(&tar[0]);
+     cout << "target64::" << std::hex << target64 << endl;*/
 
     /*hash[0] = ctx.h[0] & 0xFF;
     hash[1] = (ctx.h[0] >> 8) & 0xFF;
@@ -146,6 +252,14 @@ class Blake2bCPU {
       0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
       0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
       0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
+    };
+
+    //contains some fake const data for the header
+    const uint64_t mhdr[16] = {
+      0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,   0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+      0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,   0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+      0x510E527FADE682D1, 0x9B05688C2B3E6C1F,  
+     0,0,0,0,0,0 
     };
 
 
@@ -220,24 +334,26 @@ class Blake2bCPU {
       //one changes (or even just half of it). -> compile code at run-time
       //as method
 
-      ROUND(0);
-      ROUND(1);
-      ROUND(2);
-      ROUND(3);
-      ROUND(4);
-      ROUND(5);
-      ROUND(6);
-      ROUND(7);
-      ROUND(8);
-      ROUND(9);
-      ROUND(10);
-      ROUND(11);
+      ROUNDS(m,m[4]);
+
+      /*     ROUND(0);
+           ROUND(1);
+           ROUND(2);
+           ROUND(3);
+           ROUND(4);
+           ROUND(5);
+           ROUND(6);
+           ROUND(7);
+           ROUND(8);
+           ROUND(9);
+           ROUND(10);
+           ROUND(11);*/
 
 
 
       //we only care about the first 64 bits of the hash
       ctx.h[0] = blake2b_iv[0] ^ 0x01010020 ^ v[0] ^ v[8];
-     // cout << "hash64  :" << swapLong(&ctx.h[0]) << "(" << std::hex << swapLong(&ctx.h[0]) << ")";
+      // cout << "hash64  :" << swapLong(&ctx.h[0]) << "(" << std::hex << swapLong(&ctx.h[0]) << ")";
       //cout << " is " << ( (swapLong(&ctx.h[0]) <= target64) ? " " : "not " ) << "smaller" << endl;
 
       //convert those first 64bits to big endian.
