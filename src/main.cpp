@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
 
   
-  Stratum client("eu.siamining.com", 3333, "99eed232c4749a8bbc505ba7fe9c21fd7261d92438d2a2d4c3069ddc72f4b1cafa21cf0421af");
+  Stratum client("eu.siamining.com", 3333, "99eed232c4749a8bbc505ba7fe9c21fd7261d92438d2a2d4c3069ddc72f4b1cafa21cf0421af.xia");
 
   client.subscribe("myMiningAdress");
   int i = 0; //this is just so the while loop doesn't get optimized away
