@@ -20,7 +20,7 @@ class HeaderTest {
 
  public:
   HeaderTest() {
-    miner = new Miner;
+    miner = new Miner(1);
     using namespace std::placeholders; //for _1
 
     callbackFunctorMining = std::bind(&HeaderTest::reportSolution, this, _1);

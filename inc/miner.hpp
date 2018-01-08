@@ -67,8 +67,12 @@ class Miner {
   /* mutex to add jobs */
   std::mutex mtx;
 
+
+  int nThreads = 1;
+
+
  public:
-  Miner() {
+  Miner(int nThreads) : nThreads(nThreads) {
 
   }
   ~Miner() {
@@ -217,15 +221,19 @@ class Miner {
           mtx.lock();
           Target target = miningTarget;
           mtx.unlock();
-          cout << " , intensity:" << intensity << endl;
-          
+          cout << " intensity:" << intensity << endl;
 
-          ndb::Blake2bCPU b2bcpu;
+
+          ndb::Blake2bCPU b2bcpu(nThreads);
           uint32_t nonceOut;
-          //This modifies the nonce in place, careful!
+
           found = b2bcpu.sia_hash_range(header, sj.offset, sj.offset + sj.intensity, target.value, &nonceOut);
 
           if (found == true) {
+            header[32] = (nonceOut >> 24) & 0xFF;
+            header[33] = (nonceOut >> 16) & 0xFF;
+            header[34] = (nonceOut >> 8) & 0xFF;
+            header[35] = (nonceOut) & 0xFF;
             cout << "job " << sj.jobID << " found match:" << bigmath.toHexString(hash, 32) << endl;
             cout << "target    :" << bigmath.toHexString(target.value) << endl;
             cout << "nonce:" << nonceOut << endl;

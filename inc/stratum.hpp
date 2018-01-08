@@ -54,7 +54,8 @@ class Stratum {
   ExtraNonce2 en2;
   Target miningTarget;
 
-  Miner* miner;
+  /*Keeps the miner*/
+  Miner& miner;
   //Checks if a query with given id has been sent
   int sentQueryWithId(const int id) {
     int method = StratumMethod::none;
@@ -77,7 +78,7 @@ class Stratum {
     return q.find("error") != q.end();
   }
  public:
-  Stratum(std::string address, int port, std::string miningAddress) {
+  Stratum(std::string address, int port, std::string miningAddress, Miner& miner) : miner(miner) {
     this->miningAddress = miningAddress;
     rpc = new RPCConnection(address, port);
     //if connectioned succeeded, setup receive callback
@@ -88,17 +89,15 @@ class Stratum {
         cout << "rpc callback handler added" << endl;
     }
 
-    //Get a miner thread up and running:
-    miner = new Miner;
     using namespace std::placeholders; //for _1
 
+    //Get  miner  up and running:
     callbackFunctorMining = std::bind(&Stratum::submitHeader, this, _1);
-    if (miner->registerMiningResultCallback(callbackFunctorMining))
+    if (miner.registerMiningResultCallback(callbackFunctorMining))
       cout << "mining callback handler added" << endl;
   }
   ~Stratum() {
     delete rpc; //terminates tcp connection thread
-    delete miner; //terminates mining thread
   }
   void subscribe(std::string miningAddress) {
     cout << "subscribing" << endl;
@@ -205,7 +204,7 @@ class Stratum {
       cout << "Received difficulty update:" << difficulty << endl;
 
       Bigmath bigmath;
-      miner->setTarget(difficulty);
+      miner.setTarget(difficulty);
 
 
       //cout << "mining difficulty:" << bigmath.toHexString(miner->getTarget()) << endl;
@@ -249,14 +248,14 @@ class Stratum {
     cout << "adding job with en1:" << bigmath.toHexString(extraNonce1) << ", en2:" << bigmath.toHexString(sj.extranonce2) << endl;
 
     en2.increment();
-    miner->computeHeader(sj, extraNonce1);
+    miner.computeHeader(sj, extraNonce1);
 
     //cout << "nbits:" << sj.nBits << endl;
     //Set network target from nbits
     sj.target.fromNbits(bigmath.hexStringToBytes(sj.nBits));
     // cout << "network difficulty:" << bigmath.toHexString(sj.target.value) << endl;
 
-    miner->addJob(sj);
+    miner.addJob(sj);
   }
   //
 

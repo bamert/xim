@@ -187,8 +187,37 @@ uint64_t swapLong(void *X) {
 class Blake2bCPU {
  public:
 
-  Blake2bCPU() {
+  Blake2bCPU(int nThreads) : nThreads(nThreads) {
   }
+  const uint8_t sigma[12][16] = {
+    { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+    { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 },
+    { 11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4 },
+    { 7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8 },
+    { 9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13 },
+    { 2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9 },
+    { 12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11 },
+    { 13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10 },
+    { 6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5 },
+    { 10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0 },
+    { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+    { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 }
+  };
+
+  const uint64_t blake2b_iv[8] = {
+    0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+    0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
+    0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
+    0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
+  };
+
+  //contains some fake const data for the header
+  const uint64_t mhdr[16] = {
+    0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,   0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+    0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,   0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+    0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
+    0, 0, 0, 0, 0, 0
+  };
 
   /* Scans a nonce range.
    *
@@ -199,7 +228,7 @@ class Blake2bCPU {
    *
    * @return     true if nonce found, false if not.
    */
-  bool sia_hash_range( unsigned char* header, uint32_t startNonce, uint32_t endNonce,
+  bool sia_hash_range( const unsigned char* header, uint32_t startNonce, uint32_t endNonce,
                        std::vector<uint8_t>& target, uint32_t* nonceOut) {
 
     Bigmath bigmath;
@@ -208,59 +237,10 @@ class Blake2bCPU {
     uint8_t hash[32];
     bool found = false;
 
-    //convert the first 64bit of the target into little endian for easier comparison.
-    /* uint8_t tar[8];
-     for (int i = 0; i < 8; i++) {
-       tar[i] = target[i];
-     }
-     uint64_t target64 = B2B_GET64(&tar[0]);
-     cout << "target64::" << std::hex << target64 << endl;*/
-
-    /*hash[0] = ctx.h[0] & 0xFF;
-    hash[1] = (ctx.h[0] >> 8) & 0xFF;
-    hash[2] = (ctx.h[0] >> 16) & 0xFF;
-    hash[3] = (ctx.h[0] >> 24) & 0xFF;
-    hash[4] = (ctx.h[0] >> 32) & 0xFF;
-    hash[5] = (ctx.h[0] >> 40) & 0xFF;
-    hash[6] = (ctx.h[0] >> 48) & 0xFF;
-    hash[7] = (ctx.h[0] >> 56) & 0xFF;
-    */
-    /* hash[0] = ctx.h[0] & 0xFF;
-      hash[1] = (ctx.h[0] >> 8) & 0xFF;
-      hash[2] = (ctx.h[0] >> 16) & 0xFF;
-      hash[3] = (ctx.h[0] >> 24) & 0xFF;
-    */
+    unsigned char headerLocal[80];
+    memcpy(headerLocal, header, 80); //copy header
 
 
-    const uint8_t sigma[12][16] = {
-      { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-      { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 },
-      { 11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4 },
-      { 7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8 },
-      { 9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13 },
-      { 2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9 },
-      { 12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11 },
-      { 13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10 },
-      { 6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5 },
-      { 10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0 },
-      { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-      { 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 }
-    };
-
-    const uint64_t blake2b_iv[8] = {
-      0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
-      0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
-      0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
-      0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
-    };
-
-    //contains some fake const data for the header
-    const uint64_t mhdr[16] = {
-      0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,   0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
-      0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,   0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
-      0x510E527FADE682D1, 0x9B05688C2B3E6C1F,  
-     0,0,0,0,0,0 
-    };
 
 
     //int i;
@@ -268,7 +248,7 @@ class Blake2bCPU {
 
     // get little-endian words. (80 bytes header = 10 x 64 byte words)
     for (int i = 0; i < 10; i++)
-      m[i] = B2B_GET64(&header[8 * i]);
+      m[i] = B2B_GET64(&headerLocal[8 * i]);
     // pad remaining 48 bytes (6 x 64 bit words)
     for (int i = 10; i < 16; i++)
       m[i] = 0;
@@ -290,13 +270,13 @@ class Blake2bCPU {
         prev = now;
       }
       //Update. Here we can update only the 32bits in question instead of the full work header.
-      header[32] = (k >> 24) & 0xFF;
-      header[33] = (k >> 16) & 0xFF;
-      header[34] = (k >> 8) & 0xFF;
-      header[35] = (k) & 0xFF;
+      headerLocal[32] = (k >> 24) & 0xFF;
+      headerLocal[33] = (k >> 16) & 0xFF;
+      headerLocal[34] = (k >> 8) & 0xFF;
+      headerLocal[35] = (k) & 0xFF;
       //fill new nonce:
       //update little endian representation of 64bit nonce
-      m[4] = B2B_GET64(&header[32]);
+      m[4] = B2B_GET64(&headerLocal[32]);
 
       //This is the same on every iteration, because we just filled h with the same content as on every round.
       //
@@ -334,7 +314,7 @@ class Blake2bCPU {
       //one changes (or even just half of it). -> compile code at run-time
       //as method
 
-      ROUNDS(m,m[4]);
+      ROUNDS(m, m[4]);
 
       /*     ROUND(0);
            ROUND(1);
@@ -353,11 +333,8 @@ class Blake2bCPU {
 
       //we only care about the first 64 bits of the hash
       ctx.h[0] = blake2b_iv[0] ^ 0x01010020 ^ v[0] ^ v[8];
-      // cout << "hash64  :" << swapLong(&ctx.h[0]) << "(" << std::hex << swapLong(&ctx.h[0]) << ")";
-      //cout << " is " << ( (swapLong(&ctx.h[0]) <= target64) ? " " : "not " ) << "smaller" << endl;
-
+    
       //convert those first 64bits to big endian.
-      //nicer way: just convert target and then compare. But this isn't really working yet...
       hash[0] = ctx.h[0] & 0xFF;
       hash[1] = (ctx.h[0] >> 8) & 0xFF;
       hash[2] = (ctx.h[0] >> 16) & 0xFF;
@@ -399,7 +376,7 @@ class Blake2bCPU {
 // Initialization Vector.
 
  private:
-
+  int nThreads = 1;
 
 
 
