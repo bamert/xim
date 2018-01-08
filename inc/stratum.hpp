@@ -99,7 +99,7 @@ class Stratum {
   ~Stratum() {
     delete rpc; //terminates tcp connection thread
   }
-  void subscribe(std::string miningAddress) {
+  void subscribe() {
     cout << "subscribing" << endl;
     if (rpc->isConnected()) {
       cout << "connected" << endl;
