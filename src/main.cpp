@@ -11,7 +11,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-
+//this is an edit by vim :-)
 int main(int argc, char *argv[]) {
   cout << "ximiner 0.1" << endl;
 
@@ -26,11 +26,11 @@ int main(int argc, char *argv[]) {
     else if (par.substr(0, 10) == "--threads=")
       cout << par.substr(10, string::npos) << endl;
   }
-  //Run Blake2b test:
+//Run Blake2b test:
 // BlakeTest bt;
 
 
-  //Run mining tests
+//Run mining tests
 // MiningTest mt;
 
 
