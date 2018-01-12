@@ -15,9 +15,16 @@ using json = nlohmann::json;
 int main(int argc, char *argv[]) {
   cout << "ximiner 0.1" << endl;
 
-  for (auto && str : std::vector<std::string> { argv, argv + argc }) {
-    std::cout << "param: " << str << std::endl;
-    str.substr(0,5)
+  for (auto && par : std::vector<std::string> { argv, argv + argc }) {
+    std::cout << "param: " << par << std::endl;
+    if (par.substr(0, 10) == "--address=")
+      cout << par.substr(10, string::npos) << endl;
+    else if (par.substr(0, 7) == "--user=")
+      cout << par.substr(10, string::npos) << endl;
+    else if (par.substr(0, 12) == "--intensity=")
+      cout << par.substr(10, string::npos) << endl;
+    else if (par.substr(0, 10) == "--threads=")
+      cout << par.substr(10, string::npos) << endl;
   }
   //Run Blake2b test:
 // BlakeTest bt;
