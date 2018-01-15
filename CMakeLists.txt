@@ -7,15 +7,6 @@ set (REQ_CPP11_FEATURES  cxx_strong_enums cxx_auto_type)
 set(CMAKE_CXX_STANDARD 11) # C++11...
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-#Find curl
-##find_package(CURL REQUIRED)
-#include_directories(${CURL_INCLUDE_DIRS})
-
-#find eigen3
-find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
-
-
 
 if(UNIX AND NOT APPLE)
   set(LINUX TRUE)
@@ -36,5 +27,4 @@ add_executable(xim src/main.cpp )
 add_executable(mwe src/segfaultmwe.cpp)
 add_executable(hdrTest src/hdrTest.cpp)
 
-#target_link_libraries(xim ${CURL_LIBRARIES})
 

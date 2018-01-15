@@ -227,7 +227,7 @@ class Miner {
           ndb::Blake2bCPU b2bcpu(nThreads);
           uint32_t nonceOut;
 
-          found = b2bcpu.sia_hash_range(header, sj.offset, sj.offset + sj.intensity, target.value, &nonceOut);
+          found = b2bcpu.hashRange(header, sj.offset, sj.offset + sj.intensity, target.value, &nonceOut);
 
           if (found == true) {
             header[32] = (nonceOut >> 24) & 0xFF;

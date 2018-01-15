@@ -332,7 +332,7 @@ class Blake2bCPU {
    *
    * @return     true if nonce found, false if not.
    */
-  bool sia_hash_range( const unsigned char* header, uint32_t startNonce, uint32_t endNonce,
+  bool hashRange( const unsigned char* header, uint32_t startNonce, uint32_t endNonce,
                        std::vector<uint8_t>& target, uint32_t* nonceOut) {
 
     Bigmath bigmath;
