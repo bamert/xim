@@ -58,12 +58,14 @@ class RPCConnection {
     //Check if connected
     if (state != ConnectionState::connected)
       cout << "ERR:not connected" << endl;
-
-    if (connection->send(query.dump() + '\n')) {
-      return true;
-    } else {
-      cout << "ERR:failed RPC send" << endl;
-      return false;
+    else
+    {
+      if (connection->send(query.dump() + '\n')) {
+        return true;
+      } else {
+        cout << "ERR:failed RPC send" << endl;
+        return false;
+      }
     }
   }
 

@@ -32,7 +32,7 @@ class Stratum {
   /*mining Address*/
   std::string miningAddress;
 
-  enum StratumState  {setup, setupFailed, subscribing, subscribed, connectFailed, disconnected};
+  enum StratumState  {connecting, setup, setupFailed, subscribing, subscribed, connectFailed, disconnected};
   int state;
   RPCConnection* rpc;
   std::thread* stratumThread;
@@ -95,15 +95,13 @@ class Stratum {
     delete rpc; //terminates tcp connection thread
   }
   void subscribe() {
+    state = StratumState::connecting;
     cout << "subscribing" << endl;
     if (rpc->isConnected()) {
       cout << "connected" << endl;
       state = StratumState::setup;
     }
-
-    //need to pass miningAddress somehow.
     if (state == StratumState::setup) {
-      cout << "sending subscription query" << endl;
       json q;
       q["id"] = rpc->getNewId();
       q["method"] = "mining.subscribe";
