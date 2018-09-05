@@ -1,10 +1,11 @@
 xim: A CPU Sia miner
 ===
 
-Note: Do not use this piece of software if you intend to get rich by mining. 
-This is a CPU miner for the SIA cryptocurrency. CPU mining is no longer profitable since the introduction of ASIC mining
+This is a CPU miner for the SIA cryptocyrrency. 
+**Note**: Do not use this piece of software if you intend to get rich by mining. 
+CPU mining is no longer profitable since the introduction of ASIC mining
 for SIA. 
-I have written this miner to understand mining and the stratum protocol.  
+I have written this miner solely for the purpose of understanding sia mining and the stratum protocol.  
 
 Dependencies
 ---
