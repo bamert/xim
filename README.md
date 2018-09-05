@@ -12,6 +12,10 @@ This miner uses the excellent Json library by Niels Lohman ( https://github.com/
 
 Parameters
 ---
+Parameters are passed with two dashes as follows:
+```
+./xim --url eu.siamining.com
+```
 
 | Parameter | description | example |
 |-----------|-------------|---------|
