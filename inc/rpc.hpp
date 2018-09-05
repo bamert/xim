@@ -59,13 +59,7 @@ class RPCConnection {
     if (state != ConnectionState::connected)
       cout << "ERR:not connected" << endl;
 
-    //Check if malformed query
-    //(to be implemented)
-    //Serialize and send
-
     if (connection->send(query.dump() + '\n')) {
-      //If query sent successfully, add id to list to confirm receive later on (and avoid we get reply for sth we didn't ask for.)
-      //cout << "SENT:" << query.dump() << endl;
       return true;
     } else {
       cout << "ERR:failed RPC send" << endl;
@@ -85,7 +79,7 @@ class RPCConnection {
     if (state == ConnectionState::connected) {
       //launch thread
       receiveThreadRunning = true;
-      callbackThread = new std::thread([&]() { // issue could be that this is within a thread
+      callbackThread = new std::thread([&]() { 
         while (receiveThreadRunning) {
           std::string res = connection->read();
           json resJson = json::parse(res);

@@ -18,7 +18,6 @@
 using namespace std;
 using json = nlohmann::json;
 
-
 // To keep the queries that we sent to server
 enum StratumMethod {miningAuthorize, miningSubscribe, miningSubmit, miningSetDifficulty, clientGetVersion, none};
 
@@ -27,9 +26,6 @@ struct StratumQuery {
   int id;
   StratumQuery(int method, int id) : method(method), id(id) {}
 };
-
-
-
 
 class Stratum {
  private:
@@ -67,7 +63,6 @@ class Stratum {
       }
     }
     return method;
-
   }
 
   //check if a message is a query to the client or an answer from the server
@@ -166,7 +161,6 @@ class Stratum {
         q["method"] = "mining.authorize";
         q["params"] = {miningAddress, ""};
 
-
         if (rpc->sendQuery(q)) {
           cout << "sent auth" << endl;
           sentQueries.push_back(StratumQuery(StratumMethod::miningAuthorize, q["id"]));
@@ -181,7 +175,6 @@ class Stratum {
       if (method == StratumMethod::miningSubmit) {
         cout << "Submission reply:" << endl << r.dump() << endl;
       }
-
     }
 
     //Else it must be server command without an id
@@ -190,7 +183,6 @@ class Stratum {
       q["id"] = r["id"]; //answer with same id
       q["error"] = nullptr;
       q["result"] = {"xiaminer 0.1"};
-
 
       if (rpc->sendQuery(q));//we're actually sending a reply here, so no reply is expected.
     }
@@ -205,9 +197,6 @@ class Stratum {
 
       Bigmath bigmath;
       miner.setTarget(difficulty);
-
-
-      //cout << "mining difficulty:" << bigmath.toHexString(miner->getTarget()) << endl;
 
       if (rpc->sendQuery(q));//we're actually sending a reply here, so no reply is expected.
     }
@@ -250,10 +239,8 @@ class Stratum {
     en2.increment();
     miner.computeHeader(sj, extraNonce1);
 
-    //cout << "nbits:" << sj.nBits << endl;
     //Set network target from nbits
     sj.target.fromNbits(bigmath.hexStringToBytes(sj.nBits));
-    // cout << "network difficulty:" << bigmath.toHexString(sj.target.value) << endl;
 
     miner.addJob(sj);
   }

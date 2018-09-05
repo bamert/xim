@@ -69,10 +69,11 @@ class Miner {
 
 
   int nThreads = 1;
+  int intensity = 0x1 << 28;
 
 
  public:
-  Miner(int nThreads) : nThreads(nThreads) {
+  Miner(int nThreads, int intensity) : nThreads(nThreads), intensity(intensity) {
 
   }
   ~Miner() {
@@ -88,11 +89,7 @@ class Miner {
   }
   void addJob(SiaJob sj) {
     mtx.lock();
-    //don't keep a queue of tasks
-
-    //  POSSIBLE ERROR:
-    // - hash function has some sort of state and doesn't always return the same result.
-    //- I process jobs that are too old. use stack instead of queue(?)
+    sj.intensity = 0x1 << intensity;
     jobs.push(sj);
     mtx.unlock();
   }
@@ -121,67 +118,30 @@ class Miner {
     offset += append(&buffer[offset], sj.coinb1);
     offset += append(&buffer[offset], extraNonce1);
     offset += append(&buffer[offset], sj.extranonce2);
-    //en2.increment();//update extranonce2
     offset += append(&buffer[offset], sj.coinb2);
 
     tmp.assign(buffer, buffer + offset);
-    //cout << "arbtx:" << bigmath.toHexString(tmp) << endl;
 
-    //hash [0,offset] on buffer
     Blake2b b2b;
     uint8_t mhash[32];
     b2b.sia_gen_hash(buffer, offset, mhash);
-    //cout << "arbtx hash" << bigmath.toHexString(mhash,32) << endl;
-
 
     uint8_t merkleRoot[32]; //256bit
     memcpy(merkleRoot, mhash, 32);
 
-    //cout << "merkleBranches:" << sj.merkleBranches.size() << endl;
     for (auto el : sj.merkleBranches) {
-
-      //cout << "merkleRoot" << bigmath.toHexString(merkleRoot,32) << endl;
-      //merkleRoot = blake2b('\x01' + binascii.unhexlify(h) + merkle_root, digest_size = 32).digest();
       offset = 1;
       buffer[0] = 1;
       offset += append(&buffer[offset], el); //markle branch
       memcpy(&buffer[offset], merkleRoot, 32); //256bit previous merkleRoot
       b2b.sia_gen_hash(buffer, offset + 32, merkleRoot); //output val to merkleRoot
     }
-    //cout << "merkleRoot" << bigmath.toHexString(merkleRoot,32) << endl;
-    //cout << "MerkleRoot:" << bigmath.toHexString(merkleRoot, 32) << endl;
-    // cout << "offset (should be 32)" << offset << endl;
     uint8_t header[80];
     offset = 0;
     offset += append(&header[offset], sj.prevHash);
     offset += append(&header[offset], {0, 0, 0, 0, 0, 0 , 0, 0}); //where we aer gonna put our trial nonce
     offset +=  append(&header[offset], sj.nTime);
     memcpy(&header[offset], merkleRoot, 32);
-
-    //Current prevhash:
-
-    //tmp.assign(header, header + 32);
-    //cout << "before:" << bigmath.toHexString(tmp) << endl;
-
-    //le32array(&header[0], 32); //change endianness of prevHash array (4 byte groups)
-    //tmp.assign(header, header + 32);
-
-    //cout << "after :" << bigmath.toHexString(tmp) << endl;
-
-
-
-    //le32array(&header[40], 4); //change endianness of nTime (single 4byte field)
-    //le32array(&header[48], 32); //change endianness of merkleroot
-
-
-
-
-
-    /*cout << "header:" << offset << endl;
-    for (int i = 0; i < 80; i++)
-      cout << buffer[i];
-    cout << endl;
-    */
 
     //Add header to current job
     sj.header = bigmath.bufferToVector(header, 80);
@@ -193,7 +153,6 @@ class Miner {
       Blake2b b2b;
       Bigmath bigmath;
       while (threadRunning) {
-        //  cout << "K" << endl; //currently need this to actually mine, I don't know why. -_-
         mtx.lock();
         bool jobsEmpty = jobs.empty();
         mtx.unlock();
